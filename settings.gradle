@@ -57,7 +57,8 @@ include ("grails-datastore-core",
         'grails-datastore-gorm-hibernate-core',
         'grails-datastore-gorm-hibernate',
         'grails-datastore-gorm-hibernate4',
-        'grails-datastore-gorm-hibernate5'
+        'grails-datastore-gorm-hibernate5',
+        'grails-datastore-gorm-orientdb'
 
         // Unmaintained / Deprecated Implementations
 /*        'grails-datastore-gorm-riak',*/
