@@ -65,4 +65,12 @@ class OrientDbPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> 
     PersistentProperty getIdentity() {
         return super.getIdentity()
     }
+
+    String getNativePropertyName(String name) {
+        def propName = getPropertyByName(name).mapping.mappedForm.targetName
+        if (!propName) {
+            propName = name
+        }
+        propName
+    }
 }

@@ -97,9 +97,10 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             return document
         }
         def instance = entity.javaClass.newInstance()
-        for (name in document.fieldNames()) {
-            if (name in entity.getPersistentPropertyNames()) {
-                instance[name] = document.field(name)
+        for(name in entity.getPersistentPropertyNames()) {
+            String nativeName = entity.getNativePropertyName(name)
+            if (document.containsField(nativeName)) {
+                instance[name] = document.field(nativeName)
             }
         }
         instance[entity.identity.name] = generateIdentifier(entity, document)

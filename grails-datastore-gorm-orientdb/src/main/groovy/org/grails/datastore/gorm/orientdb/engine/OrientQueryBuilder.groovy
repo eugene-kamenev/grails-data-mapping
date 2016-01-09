@@ -28,7 +28,7 @@ class OrientQueryBuilder extends Query {
             this.skip(queryArgs.offset as int)
         }
         if (queryArgs.sort) {
-            this.orderBy(projection(queryArgs.sort as String))
+            this.orderBy(projection(entity.getNativePropertyName(queryArgs.sort as String)))
         }
         this
     }
@@ -61,42 +61,42 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.CountDistinctProjection countDistinctProjection, Query query) {
-                    query.select(count(distinct(projection(countDistinctProjection.propertyName))))
+                    query.select(count(distinct(projection(entity.getNativePropertyName(countDistinctProjection.propertyName)))))
                 }
             },
             (GrailsQuery.MinProjection)          : new ProjectionHandler<GrailsQuery.MinProjection>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.MinProjection minProjection, Query query) {
-                    query.select(min(projection(minProjection.propertyName)))
+                    query.select(min(projection(entity.getNativePropertyName(minProjection.propertyName))))
                 }
             },
             (GrailsQuery.MaxProjection)          : new ProjectionHandler<GrailsQuery.MaxProjection>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.MaxProjection maxProjection, Query query) {
-                    query.select(max(projection(maxProjection.propertyName)))
+                    query.select(max(projection(entity.getNativePropertyName(maxProjection.propertyName))))
                 }
             },
             (GrailsQuery.SumProjection)          : new ProjectionHandler<GrailsQuery.SumProjection>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.SumProjection sumProjection, Query query) {
-                    query.select(sum(projection(sumProjection.propertyName)))
+                    query.select(sum(projection(entity.getNativePropertyName(sumProjection.propertyName))))
                 }
             },
             (GrailsQuery.AvgProjection)          : new ProjectionHandler<GrailsQuery.AvgProjection>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.AvgProjection avgProjection, Query query) {
-                    query.select(avg(projection(avgProjection.propertyName)))
+                    query.select(avg(projection(entity.getNativePropertyName(avgProjection.propertyName))))
                 }
             },
             (GrailsQuery.PropertyProjection)     : new ProjectionHandler<GrailsQuery.PropertyProjection>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.PropertyProjection projection, Query query) {
-                    def propertyName = ((GrailsQuery.PropertyProjection) projection).propertyName
+                    def propertyName = projection.propertyName
                     def association = entity.getPropertyByName(propertyName)
                     if (association instanceof Association) {
                         /*def targetNodeName = "${association.name}_${builder.getNextMatchNumber()}"
@@ -104,7 +104,7 @@ class OrientQueryBuilder extends Query {
                         return ""
 //                        return targetNodeName
                     } else {
-                        return query.select(association.name)
+                        return query.select(entity.getNativePropertyName(propertyName))
                     }
                 }
             }
@@ -187,7 +187,7 @@ class OrientQueryBuilder extends Query {
                     if (association instanceof Association) {
 
                     } else {
-                        query.where(projection(criterion.property).eq(criterion.value))
+                        query.where(projection(entity.getNativePropertyName(criterion.property)).eq(criterion.value))
                     }
                 }
             },
@@ -209,21 +209,21 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.Like criterion, Query query) {
-                    query.where(projection(criterion.property).like(criterion.value))
+                    query.where(projection(entity.getNativePropertyName(criterion.property)).like(criterion.value))
                 }
             },
             (GrailsQuery.ILike)                    : new CriterionHandler<GrailsQuery.ILike>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.ILike criterion, Query query) {
-                    query.where(projection(criterion.property).like(criterion.value))
+                    query.where(projection(entity.getNativePropertyName(criterion.property)).like(criterion.value))
                 }
             },
             (GrailsQuery.RLike)                    : new CriterionHandler<GrailsQuery.RLike>() {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.RLike criterion, Query query) {
-                    query.where(projection(criterion.property).like(criterion.value))
+
                 }
             },
             (GrailsQuery.In)                       : new CriterionHandler<GrailsQuery.In>() {
@@ -247,6 +247,7 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 def handle(OrientDbPersistentEntity entity, GrailsQuery.IsNull criterion, Query query) {
+                    query.where(projection(entity.getNativePropertyName(criterion.property)).isNull())
                 }
             },
             (AssociationQuery)                                                  : new AssociationQueryHandler(),

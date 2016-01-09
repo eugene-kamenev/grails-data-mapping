@@ -63,8 +63,8 @@ class Person implements Serializable, Comparable<Person> {
     }
 
     static mapping = {
-        firstName index:true
-        lastName index:true
+        firstName index:true, attr: 'first__name'
+        lastName index:true, attr: 'last__name'
         age index:true
     }
 

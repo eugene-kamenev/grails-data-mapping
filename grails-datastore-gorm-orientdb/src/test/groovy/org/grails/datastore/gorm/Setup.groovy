@@ -6,7 +6,7 @@ import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
 import org.grails.datastore.gorm.orientdb.*
-import org.grails.datastore.gorm.orientdb.document.*
+import org.grails.datastore.gorm.orientdb.graph.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.transactions.DatastoreTransactionManager
