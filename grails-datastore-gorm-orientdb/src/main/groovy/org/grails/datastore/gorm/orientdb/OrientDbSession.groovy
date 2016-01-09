@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orientdb
 
 import com.orientechnologies.orient.core.db.OPartitionedDatabasePool
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
+import com.orientechnologies.orient.core.tx.OTransaction
 import com.tinkerpop.blueprints.impls.orient.OrientGraph
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.engine.OrientDbEntityPersister
@@ -20,6 +21,7 @@ class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
 
     protected final OPartitionedDatabasePool connectionPool
     protected ODatabaseDocumentTx currentDocumentConnection
+    protected OrientGraph currentActiveGraph
 
     OrientDbSession(OrientDbDatastore datastore, MappingContext mappingContext, ApplicationEventPublisher publisher, boolean stateless, OPartitionedDatabasePool connectionPool) {
         super(datastore, mappingContext, publisher, stateless)
@@ -35,13 +37,14 @@ class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
 
     @Override
     protected Transaction beginTransactionInternal() {
-        return new SessionOnlyTransaction<OPartitionedDatabasePool>(getNativeInterface(), this);
+        return new SessionOnlyTransaction<OTransaction>(currentDocumentConnection.getTransaction(), this);
     }
 
     OrientGraph getGraph() {
-        def currentActiveGraph = OrientGraph.activeGraph
-        if (currentActiveGraph instanceof OrientGraph) return (OrientGraph) currentActiveGraph;
-        new OrientGraph(documentTx)
+        if (currentActiveGraph == null) {
+            currentActiveGraph = new OrientGraph(documentTx)
+        }
+        currentActiveGraph
     }
 
     ODatabaseDocumentTx getDocumentTx() {
@@ -59,14 +62,35 @@ class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
     @Override
     void clear() {
         super.clear()
+        if (currentActiveGraph != null) {
+            if (!currentActiveGraph.closed) {
+                currentActiveGraph.shutdown()
+            }
+        }
+        if (currentDocumentConnection != null) {
+            if (!currentDocumentConnection.closed) {
+                currentDocumentConnection.close()
+            }
+        }
     }
 
     @Override
     void flush() {
        super.flush()
+        if (currentActiveGraph != null) {
+            if (!currentActiveGraph.closed) {
+                currentActiveGraph.commit()
+            }
+        }
+       getTransaction().nativeTransaction.commit()
     }
 
-   @Override
+    @Override
+    SessionOnlyTransaction<OTransaction> getTransaction() {
+        return (SessionOnlyTransaction<OTransaction>) super.getTransaction()
+    }
+
+    @Override
     OrientDbDatastore getDatastore() {
         return (OrientDbDatastore) super.getDatastore()
     }

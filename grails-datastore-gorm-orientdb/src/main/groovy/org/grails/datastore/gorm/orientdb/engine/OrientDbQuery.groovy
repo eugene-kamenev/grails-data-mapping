@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orientdb.engine
 
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
+import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
@@ -43,13 +44,14 @@ class OrientDbQuery extends org.grails.datastore.mapping.query.Query implements 
         OrientQueryBuilder builder = new OrientQueryBuilder(entity)
         builder.build(projections, criteria, queryArgs)
         println "EXECUTING QUERY: " + builder.toString()
-        return session.documentTx.query(new OSQLSynchQuery<ODocument>(builder.toString()))
+        return session.documentTx.query(new OSQLSynchQuery(builder.toString()))
     }
 
     private List executeQueryForGraph(OrientDbPersistentEntity entity, Query.Junction criteria) {
         OrientQueryBuilder builder = new OrientQueryBuilder(entity)
         builder.build(projections, criteria, queryArgs)
-        return session.documentTx.query(new OSQLSynchQuery<ODocument>(builder.toString()))
+        println "EXECUTING QUERY: " + builder.toString()
+        return session.documentTx.query(new OSQLSynchQuery<OrientElement>(builder.toString()))
     }
 
     @Override

@@ -6,11 +6,7 @@ import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
 import org.grails.datastore.gorm.orientdb.*
-import org.grails.datastore.gorm.orientdb.document.Child
-import org.grails.datastore.gorm.orientdb.document.Parent
-import org.grails.datastore.gorm.orientdb.document.Person
-import org.grails.datastore.gorm.orientdb.document.Pet
-import org.grails.datastore.gorm.orientdb.document.PetType
+import org.grails.datastore.gorm.orientdb.document.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.transactions.DatastoreTransactionManager

@@ -46,6 +46,10 @@ class OrientDbPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> 
         mappedForm.orient.type == 'edge'
     }
 
+    boolean isGraph() {
+        edge || vertex
+    }
+
     OrientDbClassMapping getClassMapping() {
         classMapping
     }

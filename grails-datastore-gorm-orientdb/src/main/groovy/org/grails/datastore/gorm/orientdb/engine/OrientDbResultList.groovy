@@ -1,8 +1,7 @@
 package org.grails.datastore.gorm.orientdb.engine
 
 import com.orientechnologies.orient.core.record.impl.ODocument
-import com.tinkerpop.blueprints.Edge
-import com.tinkerpop.blueprints.Vertex
+import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.query.AbstractResultList
 import org.grails.datastore.mapping.model.types.Association
@@ -53,13 +52,14 @@ class OrientDbResultList extends AbstractResultList {
         if (next instanceof ODocument) {
             return decodeFromDocument(next)
         }
-        if (next instanceof Vertex) {
-
-        }
-        if (next instanceof Edge) {
-
+        if (next instanceof OrientElement) {
+            return decodeFromGraph(next)
         }
         next
+    }
+
+    private Object decodeFromGraph(OrientElement element) {
+        return entityPersister.unmarshallFromGraph(entityPersister.persistentEntity, element)
     }
 
     private Object decodeFromDocument(ODocument next) {

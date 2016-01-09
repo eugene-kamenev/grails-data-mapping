@@ -4,6 +4,8 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.id.ORID
 import com.orientechnologies.orient.core.id.ORecordId
 import com.orientechnologies.orient.core.record.impl.ODocument
+import com.tinkerpop.blueprints.impls.orient.OrientElement
+import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
@@ -28,7 +30,8 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         super(mappingContext, entity, session, publisher);
     }
 
-    public static final ValueRetrievalStrategy<ODocument> DOCUMENT_VALUE_RETRIEVAL_STRATEGY = new ValueRetrievalStrategy<ODocument>() {
+    public static
+    final ValueRetrievalStrategy<ODocument> DOCUMENT_VALUE_RETRIEVAL_STRATEGY = new ValueRetrievalStrategy<ODocument>() {
         @Override
         public Object getValue(ODocument document, String name) {
             return document.field(name);
@@ -39,6 +42,22 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             document.field(name, value);
         }
     };
+
+    public static
+    final ValueRetrievalStrategy<OrientElement> VERTEX_EDGE_VALUE_RETRIVAL_STRATEGY = new ValueRetrievalStrategy<OrientElement>() {
+        @Override
+        Object getValue(OrientElement orientVertex, String name) {
+            orientVertex.getProperty(name)
+        }
+
+        @Override
+        void setValue(OrientElement orientVertex, String name, Object value) {
+            if (value == null && getValue(orientVertex, name) == null) {
+                return;
+            }
+            orientVertex.setProperty(name, value)
+        }
+    }
 
     protected ORecordId createRecordIdWithKey(Object key) {
         ORecordId recId = null;
@@ -87,15 +106,19 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         return instance
     }
 
-    /*@Override
-    protected Object getEntryValue(OIdentifiable nativeEntry, String property) {
-        return nativeEntry.field(property);
+    Object unmarshallFromGraph(OrientDbPersistentEntity entity, OrientElement element) {
+        if (element == null) {
+            return element
+        }
+        def instance = entity.javaClass.newInstance()
+        for(name in element.getPropertyKeys()) {
+            if (name in entity.getPersistentPropertyNames()) {
+                instance[name] = element.getProperty(name)
+            }
+        }
+        instance[entity.identity.name] = generateIdentifier(entity, element)
+        return instance
     }
-
-    @Override
-    protected void setEntryValue(OIdentifiable nativeEntry, String key, Object value) {
-        nativeEntry.field(key, value);
-    }*/
 
     @Override
     protected void deleteEntry(String family, Object key, Object entry) {
@@ -111,7 +134,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             return entry.identity.toString()
         }
         if (Number.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
-            // just for passing grails tests??
+            // just for passing grails native tests??
             return entry.identity.toString().hashCode()
         }
         return null
@@ -142,13 +165,13 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             return true;
         }
 
-        ORecordId dbo = (ORecordId)entry;
+        ORecordId dbo = (ORecordId) entry;
         PersistentEntity entity = getPersistentEntity();
 
         EntityAccess entityAccess = createEntityAccess(entity, instance, dbo);
 
-        ORecordId cached = (ORecordId)((SessionImplementor<?>)getSession()).getCachedEntry(
-                entity, (Serializable)entityAccess.getIdentifier(), true);
+        ORecordId cached = (ORecordId) ((SessionImplementor<?>) getSession()).getCachedEntry(
+                entity, (Serializable) entityAccess.getIdentifier(), true);
 
         return !dbo.equals(cached);
     }
@@ -157,6 +180,12 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
     protected OIdentifiable createNewEntry(String family) {
         if (persistentEntity.document) {
             return new ODocument(family)
+        }
+        if (persistentEntity.vertex) {
+            return orientDbSession().graph.addTemporaryVertex(family)
+        }
+        if (persistentEntity.edge) {
+            // TODO: decide what to do here return orientDbSession().graph.create
         }
         return null
     }
@@ -176,17 +205,12 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
 
     @Override
     protected Object getEntryValue(OIdentifiable nativeEntry, String property) {
-        if (persistentEntity.document) {
-            return getValueRetrievalStrategy().getValue(nativeEntry, property);
-        }
-        return null
+        return getValueRetrievalStrategy().getValue(nativeEntry, property);
     }
 
     @Override
     protected void setEntryValue(OIdentifiable nativeEntry, String key, Object value) {
-        if (persistentEntity.document) {
-            getValueRetrievalStrategy().setValue(nativeEntry, key, value)
-        }
+        getValueRetrievalStrategy().setValue(nativeEntry, key, value)
     }
 
     @Override
@@ -195,11 +219,18 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         if (orientEntity.document) {
             return orientDbSession().documentTx.load(createRecordIdWithKey(key))
         }
+        if (orientEntity.vertex) {
+            return orientDbSession().graph.getVertex(createRecordIdWithKey(key))
+        }
+        if (orientEntity.edge) {
+            return orientDbSession().graph.getEdge(createRecordIdWithKey(key))
+        }
         return null
     }
 
     @Override
     protected Object storeEntry(PersistentEntity persistentEntity, EntityAccess entityAccess, Object storeId, OIdentifiable nativeEntry) {
+        println "StoreId $storeId"
         def orientEntity = (OrientDbPersistentEntity) persistentEntity
         ORID identity
         if (orientEntity.document) {
@@ -207,15 +238,25 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             doc.className = orientEntity.className
             identity = orientDbSession().documentTx.save(doc).identity
         }
-        if (ORID.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
-            return identity
+        if (orientEntity.vertex) {
+            def vertex = (OrientVertex) nativeEntry
+            vertex.save()
+            identity = vertex.identity
         }
-        if (String.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
-            return identity.toString()
+        if (orientEntity.edge) {
+            //def edge = orientDbSession().graph.addEdge()
         }
-        if (Number.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
-            // just for passing grails tests??
-            return identity.toString().hashCode()
+        if (identity) {
+            if (ORID.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
+                return identity
+            }
+            if (String.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
+                return identity.toString()
+            }
+            if (Number.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
+                // just for passing grails tests??
+                return identity.toString().hashCode()
+            }
         }
         return null
     }
@@ -226,13 +267,17 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         if (orientEntity.document) {
             def doc = (ODocument) entry
             doc.className = orientEntity.className
-            orientDbSession().documentTx.save(doc).identity
+            orientDbSession().documentTx.save(doc)
+        }
+        if (orientEntity.graph) {
+            def vertex = (OrientElement) entry
+            vertex.save()
         }
     }
 
     @Override
     protected void deleteEntries(String family, List keys) {
-        for(key in keys) {
+        for (key in keys) {
             orientDbSession().documentTx.delete(createRecordIdWithKey(key))
         }
     }
@@ -246,13 +291,16 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         if (persistentEntity.document) {
             return DOCUMENT_VALUE_RETRIEVAL_STRATEGY
         }
+        if (persistentEntity.graph) {
+            return VERTEX_EDGE_VALUE_RETRIVAL_STRATEGY
+        }
         null
     }
 
     /**
      * Strategy interface for implementors to implement to set and get values from the native type
      *
-     * @param <T> The native type
+     * @param < T >  The native type
      */
     static interface ValueRetrievalStrategy<T> {
         Object getValue(T t, String name);
