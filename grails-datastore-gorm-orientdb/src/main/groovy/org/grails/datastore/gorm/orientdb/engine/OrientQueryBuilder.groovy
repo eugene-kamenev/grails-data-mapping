@@ -170,39 +170,12 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 Clause handle(OrientDbPersistentEntity entity, GrailsQuery.Equals criterion, Query query) {
-                    /*Neo4jMappingContext mappingContext = (Neo4jMappingContext)entity.mappingContext
-                    int paramNumber = builder.addParam( mappingContext.convertToNative(criterion.value) )
-                    def association = entity.getPropertyByName(criterion.property)
-                    String lhs
-                    if (association instanceof Association) {
-                        def targetNodeName = "m_${builder.getNextMatchNumber()}"
-                        builder.addMatch("(${query})${matchForAssociation(association)}(${targetNodeName})")
-
-                        def graphEntity = (GraphPersistentEntity) ((Association) association).associatedEntity
-                        if(graphEntity.idGenerator == null) {
-                            lhs = "ID(${targetNodeName})"
-                        }
-                        else {
-                            lhs = "${targetNodeName}.${CypherBuilder.IDENTIFIER}"
-                        }
-                    } else {
-                        def graphEntity = (GraphPersistentEntity) entity
-                        if(graphEntity.idGenerator == null) {
-                            lhs = criterion.property == "id" ? "ID(${query})" : "${query}.${criterion.property}"
-                        }
-                        else {
-                            lhs = criterion.property == "id" ? "${query}.${CypherBuilder.IDENTIFIER}" : "${query}.${criterion.property}"
-                        }
-                    }
-
-                    return new OrientSQLExpression(lhs, "{$paramNumber}", CriterionHandler.OPERATOR_EQUALS)*/
                     def association = entity.getPropertyByName(criterion.property)
                     if (association instanceof Association) {
-
+                        return clause(projection(entity.getNativePropertyName(criterion.property)), Operator.EQ, criterion.value)
                     } else {
                         return clause(projection(entity.getNativePropertyName(criterion.property)), Operator.EQ, criterion.value)
                     }
-                    return null
                 }
             },
             (GrailsQuery.IdEquals)                 : new CriterionHandler<GrailsQuery.IdEquals>() {

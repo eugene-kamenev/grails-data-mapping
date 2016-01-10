@@ -1,21 +1,15 @@
 package org.grails.datastore.gorm.orientdb.engine
 
 import com.orientechnologies.orient.core.record.impl.ODocument
-import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.query.AbstractResultList
-import org.grails.datastore.mapping.model.types.Association
+import org.grails.datastore.mapping.core.SessionImplementor
 
 import javax.persistence.LockModeType
 
 @CompileStatic
 class OrientDbResultList extends AbstractResultList {
-    private static final Map<Association, Object> EMPTY_ASSOCIATIONS = Collections.<Association, Object> emptyMap()
-    private static final Map<String, Object> EMPTY_RESULT_DATA = Collections.<String, Object> emptyMap()
-
-    final protected transient  OrientDbEntityPersister entityPersister;
-
-    protected transient Map<Association, Object> initializedAssociations = EMPTY_ASSOCIATIONS
+    final protected transient OrientDbEntityPersister entityPersister;
 
     protected final LockModeType lockMode
 
@@ -31,48 +25,40 @@ class OrientDbResultList extends AbstractResultList {
         this.lockMode = javax.persistence.LockModeType.NONE;
     }
 
-
-
-    /**
-     * Set any already initialized associations to avoid extra proxy queries
-     *
-     * @param initializedAssociations
-     */
-    void setInitializedAssociations(Map<Association, Object> initializedAssociations) {
-        this.initializedAssociations = initializedAssociations
-    }
-
     @Override
     protected Object nextDecoded() {
-        return nextDecodedInternal()
-    }
-
-    private Object nextDecodedInternal() {
         def next = cursor.next()
         if (next instanceof ODocument) {
-            return decodeFromDocument(next)
-        }
-        if (next instanceof OrientElement) {
-            return decodeFromGraph(next)
-        }
-        next
-    }
-
-    private Object decodeFromGraph(OrientElement element) {
-        return entityPersister.unmarshallFromGraph(entityPersister.persistentEntity, element)
-    }
-
-    private Object decodeFromDocument(ODocument next) {
-        if (next.className != null) {
-            return entityPersister.unmarshallDocument(entityPersister.persistentEntity, next)
-        } else {
-            if (next.fields() == 1) {
-                return next.fieldValues()[0]
+            def doc = (ODocument) next
+            if (doc.className != null) {
+                return doc
             } else {
-                return next.fieldValues().toList()
+                if (doc.fields() == 1) {
+                    return doc.fieldValues()[0]
+                } else {
+                    return doc.fieldValues().toList()
+                }
             }
         }
         return next
+    }
+
+    @Override
+    protected Object convertObject(Object o) {
+        if (o instanceof ODocument) {
+            final ODocument dbObject = (ODocument) o;
+            Object id = dbObject.identity
+            SessionImplementor session = (SessionImplementor) entityPersister.getSession();
+            Class type = entityPersister.getPersistentEntity().getJavaClass();
+            //Object instance = session.getCachedInstance(type, (Serializable) id);
+            Object instance
+            if (instance == null) {
+                instance = entityPersister.createObjectFromNativeEntry(entityPersister.persistentEntity, (Serializable) id, dbObject);
+                //session.cacheInstance(type, (Serializable) id, instance);
+            }
+            return instance;
+        }
+        return o;
     }
 
     @Override

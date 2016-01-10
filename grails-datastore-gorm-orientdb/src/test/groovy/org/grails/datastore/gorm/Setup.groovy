@@ -2,15 +2,18 @@ package org.grails.datastore.gorm
 
 import com.orientechnologies.orient.core.db.ODatabase
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
+import com.orientechnologies.orient.core.sql.OCommandSQL
 import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
 import org.grails.datastore.gorm.orientdb.OrientDbDatastore
 import org.grails.datastore.gorm.orientdb.OrientDbMappingContext
+import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
-import org.grails.datastore.gorm.orientdb.graph.*
+import org.grails.datastore.gorm.orientdb.document.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
+import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.transactions.DatastoreTransactionManager
 import org.springframework.context.support.GenericApplicationContext
 
@@ -37,7 +40,7 @@ class Setup {
             db.drop()
             db = new ODatabaseDocumentTx("memory:test").create()
         }
-        def classes = [Person, Pet, PetType, Parent, Child, TestEntity]
+        def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         MappingContext mappingContext = new OrientDbMappingContext({})
@@ -45,6 +48,18 @@ class Setup {
 
         for (Class cls in classes) {
             mappingContext.addPersistentEntity(cls)
+        }
+        mappingContext.getPersistentEntities().each { PersistentEntity e ->
+            def orientEntity = (OrientDbPersistentEntity) e
+            if (orientEntity.isVertex()) {
+                db.command(new OCommandSQL("CREATE CLASS $orientEntity.className extends V"))
+            }
+            if (orientEntity.isDocument()) {
+                db.getMetadata().getSchema().createClass(orientEntity.className)
+            }
+            if (orientEntity.isEdge()) {
+                db.command(new OCommandSQL("CREATE CLASS $orientEntity.className extends E"))
+            }
         }
 
         def grailsApplication = new DefaultGrailsApplication(classes as Class[], Setup.getClassLoader())

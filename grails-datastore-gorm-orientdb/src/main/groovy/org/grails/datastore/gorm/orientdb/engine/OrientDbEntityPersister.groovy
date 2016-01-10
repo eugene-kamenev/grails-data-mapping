@@ -9,6 +9,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
+import org.grails.datastore.gorm.orientdb.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.core.SessionImplementor
 import org.grails.datastore.mapping.engine.AssociationIndexer
@@ -18,8 +19,10 @@ import org.grails.datastore.mapping.engine.PropertyValueIndexer
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.PersistentProperty
+import org.grails.datastore.mapping.model.PropertyMapping
 import org.grails.datastore.mapping.model.types.Association
 import org.grails.datastore.mapping.model.types.Identity
+import org.grails.datastore.mapping.model.types.Simple
 import org.grails.datastore.mapping.query.Query
 import org.springframework.context.ApplicationEventPublisher
 
@@ -45,16 +48,28 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
     };
 
     public static
-    final ValueRetrievalStrategy<OrientElement> VERTEX_EDGE_VALUE_RETRIVAL_STRATEGY = new ValueRetrievalStrategy<OrientElement>() {
+    final ValueRetrievalStrategy VERTEX_EDGE_VALUE_RETRIVAL_STRATEGY = new ValueRetrievalStrategy() {
         @Override
-        Object getValue(OrientElement orientVertex, String name) {
-            orientVertex.getProperty(name)
+        Object getValue(Object orientVertex, String name) {
+            if (orientVertex instanceof ODocument) {
+                return orientVertex.field(name);
+            }
+            if (orientVertex instanceof OrientElement) {
+                return orientVertex.getProperty(name)
+            }
+            return null
         }
 
         @Override
-        void setValue(OrientElement orientVertex, String name, Object value) {
-            if (value == null && getValue(orientVertex, name) == null) return;
-            orientVertex.setProperty(name, value)
+        void setValue(Object orientVertex, String name, Object value) {
+            if (orientVertex instanceof ODocument) {
+                if (value == null && getValue(orientVertex, name) == null) return;
+                orientVertex.field(name, value);
+            }
+            if (orientVertex instanceof OrientElement) {
+                if (value == null && getValue(orientVertex, name) == null) return;
+                orientVertex.setProperty(name, value)
+            }
         }
     }
 
@@ -91,39 +106,45 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         persistentEntity.className
     }
 
+    public Object createObjectFromNativeEntry(PersistentEntity persistentEntity, Serializable nativeKey, OIdentifiable nativeEntry) {
+        persistentEntity = discriminatePersistentEntity(persistentEntity, nativeEntry);
+
+        cacheNativeEntry(persistentEntity, nativeKey, nativeEntry);
+
+        Object obj = newEntityInstance(persistentEntity);
+        refreshObjectStateFromNativeEntry(persistentEntity, obj, nativeKey, nativeEntry, false);
+        return obj;
+    }
+
     Object unmarshallDocument(OrientDbPersistentEntity entity, ODocument document) {
         if (document == null) {
             return document
         }
-        def instance = entity.javaClass.newInstance()
-        for(name in entity.getPersistentPropertyNames()) {
-            String nativeName = entity.getNativePropertyName(name)
-            if (document.containsField(nativeName)) {
-                def value = document.field(nativeName)
-                if (value instanceof ODocument) {
-                    def association =  entity.getPropertyByName(name) as Association
-                    instance[name] = unmarshallDocument((OrientDbPersistentEntity)association.associatedEntity, value)
-                } else {
-                    instance[name] = value
+        if (document.className != null) {
+            EntityAccess entityAccess = orientDbSession().createEntityAccess(entity, entity.newInstance());
+            entityAccess.setIdentifierNoConversion(document.identity);
+            final Object instance = entityAccess.getEntity();
+            // orientDbSession().cacheInstance(persistentEntity.getJavaClass(), document.identity, entity);
+            for (property in entityAccess.persistentEntity.getPersistentProperties()) {
+                String nativeName = entity.getNativePropertyName(property.name)
+                if (property instanceof Simple) {
+                    if (document.containsField(nativeName)) {
+                        entityAccess.setProperty(property.name, document.field(nativeName));
+                    }
+                } else if (property instanceof Association) {
+                    def association = (Association) property
+                    if (document.containsField(nativeName)) {
+                        entityAccess.setPropertyNoConversion(property.name, unmarshallDocument((OrientDbPersistentEntity) association.associatedEntity, (ODocument) document.field(nativeName)));
+                    }
                 }
             }
+            return instance
         }
-        instance[entity.identity.name] = generateIdentifier(entity, document)
-        return instance
+        return null
     }
 
     Object unmarshallFromGraph(OrientDbPersistentEntity entity, OrientElement element) {
-        if (element == null) {
-            return element
-        }
-        def instance = entity.javaClass.newInstance()
-        for(name in element.getPropertyKeys()) {
-            if (name in entity.getPersistentPropertyNames()) {
-                instance[name] = element.getProperty(name)
-            }
-        }
-        instance[entity.identity.name] = generateIdentifier(entity, element)
-        return instance
+        throw new IllegalAccessException("Not yet implemented")
     }
 
     @Override
@@ -164,7 +185,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
 
     @Override
     AssociationIndexer getAssociationIndexer(OIdentifiable nativeEntry, Association association) {
-        return null
+        return new OrientDbAssociationIndexer(nativeEntry, association, orientDbSession())
     }
 
     @Override
@@ -206,6 +227,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         }
         return null
     }
+
 
     @Override
     protected PersistentEntity discriminatePersistentEntity(PersistentEntity persistentEntity, OIdentifiable nativeEntry) {
@@ -283,15 +305,14 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
     @Override
     protected void updateEntry(PersistentEntity persistentEntity, EntityAccess entityAccess, Object key, OIdentifiable entry) {
         def orientEntity = (OrientDbPersistentEntity) persistentEntity
-        if (orientEntity.document) {
-            def doc = (ODocument) entry
-            doc.className = orientEntity.className
-            orientDbSession().documentTx.save(doc)
-        }
-        if (orientEntity.graph) {
+        if (orientEntity.graph && entry instanceof OrientElement) {
             def vertex = (OrientElement) entry
             vertex.save()
+            return;
         }
+        def doc = (ODocument) entry
+        doc.className = orientEntity.className
+        orientDbSession().documentTx.save(doc)
     }
 
     @Override
@@ -319,11 +340,104 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
     /**
      * Strategy interface for implementors to implement to set and get values from the native type
      *
-     * @param < T >  The native type
+     * @param < T >   The native type
      */
     static interface ValueRetrievalStrategy<T> {
         Object getValue(T t, String name);
 
         void setValue(T t, String name, Object value);
+    }
+
+    protected class OrientDbAssociationIndexer implements AssociationIndexer {
+        private OIdentifiable nativeEntry;
+        private Association association;
+        private OrientDbSession session;
+        private boolean isReference = true;
+
+        public OrientDbAssociationIndexer(OIdentifiable nativeEntry, Association association, OrientDbSession session) {
+            this.nativeEntry = nativeEntry;
+            this.association = association;
+            this.session = session;
+            this.isReference = this.isReference(association);
+        }
+
+        protected boolean isReference(Association association) {
+            PropertyMapping mapping = association.getMapping();
+            if (mapping != null) {
+                OrientAttribute attribute = (OrientAttribute) mapping.getMappedForm();
+                if (attribute != null) {
+                    // return attribute.isReference();
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public boolean doesReturnKeys() {
+            return true;
+        }
+
+        public void preIndex(final Object primaryKey, final List foreignKeys) {
+            // if the association is a unidirectional one-to-many we store the keys
+            // embedded in the owning entity, otherwise we use a foreign key
+            if (!association.isBidirectional()) {
+                List dbRefs = new ArrayList();
+                for (Object foreignKey : foreignKeys) {
+                    dbRefs.add(createRecordIdWithKey(foreignKey));
+                }
+                // update the native entry directly.
+                getValueRetrievalStrategy().setValue(nativeEntry, association.name, dbRefs);
+            }
+        }
+
+        public void index(final Object primaryKey, final List foreignKeys) {
+            // indexing is handled by putting the data in the native entry before it is persisted, see preIndex above.
+        }
+
+        public List query(Object primaryKey) {
+            // for a unidirectional one-to-many we use the embedded keys
+            if (!association.isBidirectional()) {
+                final Object indexed = getValueRetrievalStrategy().getValue(nativeEntry, association.getName());
+                if (!(indexed instanceof Collection)) {
+                    return Collections.emptyList();
+                }
+                List indexedList = getIndexedAssociationsAsList(indexed);
+
+                if (associationsAreDbRefs(indexedList)) {
+                    return extractIdsFromDbRefs(indexedList);
+                }
+                return indexedList;
+            }
+            // for a bidirectional one-to-many we use the foreign key to query the inverse side of the association
+            Association inverseSide = association.getInverseSide();
+            Query query = session.createQuery(association.getAssociatedEntity().getJavaClass());
+            query.eq(inverseSide.getName(), primaryKey);
+            query.projections().id();
+            return query.list();
+        }
+
+        public PersistentEntity getIndexedEntity() {
+            return association.getAssociatedEntity();
+        }
+
+        public void index(Object primaryKey, Object foreignKey) {
+            // TODO: Implement indexing of individual entities
+        }
+
+        private List getIndexedAssociationsAsList(Object indexed) {
+            return (indexed instanceof List) ? (List) indexed : new ArrayList(((Collection) indexed));
+        }
+
+        private boolean associationsAreDbRefs(List indexedList) {
+            return !indexedList.isEmpty() && (indexedList.get(0) instanceof ORID);
+        }
+
+        private List extractIdsFromDbRefs(List indexedList) {
+            List resolvedDbRefs = new ArrayList();
+            for (Object indexedAssociation : indexedList) {
+                resolvedDbRefs.add(((ORecordId) indexedAssociation).identity);
+            }
+            return resolvedDbRefs;
+        }
     }
 }

@@ -64,12 +64,7 @@ class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
         super.clear()
         if (currentActiveGraph != null) {
             if (!currentActiveGraph.closed) {
-                currentActiveGraph.shutdown()
-            }
-        }
-        if (currentDocumentConnection != null) {
-            if (!currentDocumentConnection.closed) {
-                currentDocumentConnection.close()
+            //    currentActiveGraph.shutdown()
             }
         }
     }

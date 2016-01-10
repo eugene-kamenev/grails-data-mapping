@@ -87,6 +87,10 @@ class PetType implements Serializable {
     String name
 
     static belongsTo = Pet
+
+    static mapping = {
+        orient type: 'vertex'
+    }
 }
 
 @Entity
@@ -177,6 +181,36 @@ class Nose implements Serializable {
     static mapping = {
         orient type: 'vertex'
         face index:true
+    }
+}
+
+@Entity
+class Highway implements Serializable {
+    ORecordId id
+    Long version
+    Boolean bypassed
+    String name
+
+    static mapping = {
+        orient type: 'vertex'
+        bypassed index:true
+        name index:true
+    }
+}
+
+@Entity
+class Book implements Serializable {
+    ORecordId id
+    Long version
+    String author
+    String title
+    Boolean published = false
+
+    static mapping = {
+        orient type: 'vertex'
+        published index:true
+        title index:true
+        author index:true
     }
 }
 

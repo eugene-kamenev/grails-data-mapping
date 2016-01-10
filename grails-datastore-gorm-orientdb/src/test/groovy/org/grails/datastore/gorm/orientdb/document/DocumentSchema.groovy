@@ -165,3 +165,31 @@ class Nose implements Serializable {
         face index:true
     }
 }
+
+@Entity
+class Highway implements Serializable {
+    ORecordId id
+    Long version
+    Boolean bypassed
+    String name
+
+    static mapping = {
+        bypassed index:true
+        name index:true
+    }
+}
+
+@Entity
+class Book implements Serializable {
+    ORecordId id
+    Long version
+    String author
+    String title
+    Boolean published = false
+
+    static mapping = {
+        published index:true
+        title index:true
+        author index:true
+    }
+}
