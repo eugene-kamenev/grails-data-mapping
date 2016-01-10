@@ -1,6 +1,8 @@
 package org.grails.datastore.gorm.orientdb
 
+import grails.gorm.tests.orientdb.graph.OrientDbGraphCriteriaBuilderSpec
 import grails.gorm.tests.orientdb.graph.OrientDbGraphDetachedCriteriaSpec
+import grails.gorm.tests.orientdb.graph.OrientDbGraphGormEnhancerSpec
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 
@@ -35,7 +37,7 @@ import org.junit.runners.Suite
 //DetachedCriteriaSpec
 //SizeQuerySpec
   //      OneToManySpec,
-        OrientDbGraphDetachedCriteriaSpec
+        OrientDbGraphDetachedCriteriaSpec, OrientDbGraphGormEnhancerSpec, OrientDbGraphCriteriaBuilderSpec
 ])
 class OrientDbSuite {
 }

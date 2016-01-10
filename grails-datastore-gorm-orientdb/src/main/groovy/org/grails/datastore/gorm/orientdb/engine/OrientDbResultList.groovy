@@ -68,6 +68,8 @@ class OrientDbResultList extends AbstractResultList {
         } else {
             if (next.fields() == 1) {
                 return next.fieldValues()[0]
+            } else {
+                return next.fieldValues().toList()
             }
         }
         return next

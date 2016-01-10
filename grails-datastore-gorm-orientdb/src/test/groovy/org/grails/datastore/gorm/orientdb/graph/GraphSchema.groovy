@@ -2,7 +2,6 @@ package org.grails.datastore.gorm.orientdb.graph
 
 import com.orientechnologies.orient.core.id.ORecordId
 import grails.gorm.dirty.checking.DirtyCheck
-import grails.gorm.tests.Face
 import grails.persistence.Entity
 import groovy.transform.EqualsAndHashCode
 import org.grails.datastore.gorm.query.transform.ApplyDetachedCriteriaTransform
@@ -109,4 +108,75 @@ class Child implements Serializable {
     ORecordId id
     Long version
     String name
+
+    static mapping = {
+        orient type: 'vertex'
+    }
 }
+
+@Entity
+class TestEntity implements Serializable {
+    ORecordId id
+    Long version
+    String name
+    Integer age = 30
+
+    ChildEntity child
+
+    static mapping = {
+        orient type: 'vertex'
+        name index:true
+        age index:true, nullable:true
+        child index:true, nullable:true
+    }
+
+    static constraints = {
+        name blank:false
+        child nullable:true
+    }
+}
+
+@Entity
+class ChildEntity implements Serializable {
+    ORecordId id
+    Long version
+    String name
+
+    static mapping = {
+        orient type: 'vertex'
+        name index:true
+    }
+
+    static belongsTo = [TestEntity]
+}
+
+@Entity
+class Face implements Serializable {
+    ORecordId id
+    Long version
+    String name
+    Nose nose
+    Person person
+    static hasOne = [nose: Nose]
+    static belongsTo = [person: Person]
+
+    static constraints = {
+        orient type: 'vertex'
+        person nullable:true
+    }
+}
+
+@Entity
+class Nose implements Serializable {
+    ORecordId id
+    Long version
+    boolean hasFreckles
+    Face face
+    static belongsTo = [face: Face]
+
+    static mapping = {
+        orient type: 'vertex'
+        face index:true
+    }
+}
+

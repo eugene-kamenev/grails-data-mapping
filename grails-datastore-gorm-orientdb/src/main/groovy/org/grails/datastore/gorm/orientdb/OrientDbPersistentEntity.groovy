@@ -67,6 +67,9 @@ class OrientDbPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> 
     }
 
     String getNativePropertyName(String name) {
+        if (identity.name == name) {
+            return "@rid"
+        }
         def propName = getPropertyByName(name).mapping.mappedForm.targetName
         if (!propName) {
             propName = name

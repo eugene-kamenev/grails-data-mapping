@@ -5,7 +5,9 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
 import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
-import org.grails.datastore.gorm.orientdb.*
+import org.grails.datastore.gorm.orientdb.OrientDbDatastore
+import org.grails.datastore.gorm.orientdb.OrientDbMappingContext
+import org.grails.datastore.gorm.orientdb.OrientDbSession
 import org.grails.datastore.gorm.orientdb.graph.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
@@ -35,7 +37,7 @@ class Setup {
             db.drop()
             db = new ODatabaseDocumentTx("memory:test").create()
         }
-        def classes = [Person, Pet, PetType, Parent, Child]
+        def classes = [Person, Pet, PetType, Parent, Child, TestEntity]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         MappingContext mappingContext = new OrientDbMappingContext({})
