@@ -19,14 +19,12 @@ import org.springframework.context.ApplicationEventPublisher
 @CompileStatic
 class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
 
-    protected final OPartitionedDatabasePool connectionPool
     protected ODatabaseDocumentTx currentDocumentConnection
     protected OrientGraph currentActiveGraph
 
-    OrientDbSession(OrientDbDatastore datastore, MappingContext mappingContext, ApplicationEventPublisher publisher, boolean stateless, OPartitionedDatabasePool connectionPool) {
+    OrientDbSession(OrientDbDatastore datastore, MappingContext mappingContext, ApplicationEventPublisher publisher, boolean stateless, ODatabaseDocumentTx connection) {
         super(datastore, mappingContext, publisher, stateless)
-        this.connectionPool = connectionPool
-        this.documentTx
+        currentDocumentConnection = connection
     }
 
     @Override
@@ -48,15 +46,12 @@ class OrientDbSession extends AbstractSession<OPartitionedDatabasePool> {
     }
 
     ODatabaseDocumentTx getDocumentTx() {
-        if (currentDocumentConnection == null) {
-            currentDocumentConnection = nativeInterface.acquire()
-        }
         currentDocumentConnection
     }
 
     @Override
-    OPartitionedDatabasePool getNativeInterface() {
-        return this.connectionPool
+    ODatabaseDocumentTx getNativeInterface() {
+        return this.currentDocumentConnection
     }
 
     @Override

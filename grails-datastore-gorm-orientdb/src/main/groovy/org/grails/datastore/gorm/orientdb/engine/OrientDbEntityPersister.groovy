@@ -149,6 +149,11 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
 
     @Override
     protected Serializable convertIdIfNecessary(PersistentEntity entity, Serializable nativeKey) {
+        if (nativeKey instanceof OIdentifiable) {
+           if (nativeKey.identity.isNew()) {
+               return null
+           }
+        }
         if (nativeKey instanceof ODocument) {
             return nativeKey.identity
         }
@@ -165,7 +170,12 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
 
     @Override
     protected Object generateIdentifier(PersistentEntity persistentEntity, OIdentifiable entry) {
+        if (entry.identity.isNew()) {
+           println "Returning null identifier as entry is new $persistentEntity $entry.identity"
+            return null
+        }
         if (ORID.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
+            println "Returning $entry.identity because it is not new"
             return entry.identity
         }
         if (String.class.isAssignableFrom(persistentEntity.getIdentity().getType())) {
@@ -176,6 +186,11 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
             return entry.identity.getClusterPosition()
         }
         return null
+    }
+
+    @Override
+    protected void cacheNativeEntry(PersistentEntity persistentEntity, Serializable nativeKey, OIdentifiable nativeEntry) {
+        super.cacheNativeEntry(persistentEntity, nativeKey, nativeEntry)
     }
 
     @Override
@@ -231,6 +246,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
 
     @Override
     protected PersistentEntity discriminatePersistentEntity(PersistentEntity persistentEntity, OIdentifiable nativeEntry) {
+        println "Trying to discriminate entity $persistentEntity $nativeEntry"
         final Object o = getValueRetrievalStrategy().getValue(nativeEntry, "@class");
         if (o != null) {
             final String className = o.toString();
@@ -277,7 +293,9 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         if (orientEntity.document) {
             def doc = (ODocument) nativeEntry
             doc.className = orientEntity.className
-            identity = orientDbSession().documentTx.save(doc).identity
+            doc.validate()
+            println "Trying to save $doc"
+            identity = doc.save().identity
         }
         if (orientEntity.vertex) {
             def vertex = (OrientVertex) nativeEntry
@@ -312,7 +330,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         }
         def doc = (ODocument) entry
         doc.className = orientEntity.className
-        orientDbSession().documentTx.save(doc)
+        doc.save()
     }
 
     @Override
@@ -378,6 +396,7 @@ class OrientDbEntityPersister extends NativeEntryEntityPersister<OIdentifiable, 
         }
 
         public void preIndex(final Object primaryKey, final List foreignKeys) {
+            println "Called preIndex with $primaryKey and foreigns: $foreignKeys"
             // if the association is a unidirectional one-to-many we store the keys
             // embedded in the owning entity, otherwise we use a foreign key
             if (!association.isBidirectional()) {

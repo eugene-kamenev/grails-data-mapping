@@ -1,6 +1,6 @@
 package org.grails.datastore.gorm.orientdb
 
-import com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory
+import com.orientechnologies.orient.core.db.OPartitionedDatabasePool
 import groovy.transform.CompileStatic
 import org.grails.datastore.mapping.core.AbstractDatastore
 import org.grails.datastore.mapping.core.Session
@@ -26,71 +26,62 @@ class OrientDbDatastore extends AbstractDatastore implements DisposableBean, Sta
     static final String KEY_ORIENTDB_URL = 'grails.orientdb.url'
     static final String KEY_ORIENTDB_USERNAME = 'grails.orientdb.user'
     static final String KEY_ORIENTDB_PASSWORD = 'grails.orientdb.password'
-    static final String KEY_ORIENTDB_CONNECTION_MODE = 'grails.orientdb.connection_mode'
+    static final String KEY_ORIENTDB_POOL_SIZE = 'grails.orientdb.pool'
 
     static final String DEFAULT_ORIENTDB_URL = 'memory:test'
     static final String DEFAULT_ORIENTDB_USERNAME = 'admin'
     static final String DEFAULT_ORIENTDB_PASSWORD = 'admin'
     static final String DEFAULT_ORIENTDB_MODE = 'memory'
+    static final String DEFAULT_ORIENTDB_POOL_SIZE = 10
 
-    protected OPartitionedDatabasePoolFactory orientFactory
+    protected OPartitionedDatabasePool orientPool
 
-    /**
-     * Configures a new {@link OrientDbDatastore} for the given arguments
-     *
-     * @param mappingContext The {@link MappingContext} which contains information about the mapped classes
-     * @param configuration The configuration for the datastore
-     * @param applicationContext The Spring ApplicationContext
-     */
-    public OrientDbDatastore(MappingContext mappingContext, PropertyResolver configuration, ConfigurableApplicationContext applicationContext) {
-        super(mappingContext, configuration, applicationContext);
-        this.orientFactory = createDatabasePool(configuration);
+    OrientDbDatastore(MappingContext mappingContext) {
+        super(mappingContext)
+        createDatabasePool()
     }
 
-    /**
-     * Configures {@link OrientDbDatastore} for the given arguments
-     *
-     * @param mappingContext The {@link MappingContext} which contains information about the mapped classes
-     * @param configuration The configuration for the datastore
-     * @param applicationContext The Spring ApplicationContext
-     */
-    public OrientDbDatastore(MappingContext mappingContext, PropertyResolver configuration, ConfigurableApplicationContext applicationContext, OPartitionedDatabasePoolFactory graphDatabaseService) {
-        super(mappingContext, configuration, applicationContext);
-        this.orientFactory = graphDatabaseService;
+    OrientDbDatastore(MappingContext mappingContext, Map<String, Object> connectionDetails, ConfigurableApplicationContext ctx) {
+        super(mappingContext, connectionDetails, ctx)
+        createDatabasePool(connectionDetails)
     }
 
-    /**
-     * @see {@link #OrientDbDatastore(MappingContext, PropertyResolver, ConfigurableApplicationContext)}
-     */
-    public OrientDbDatastore(MappingContext mappingContext, ConfigurableApplicationContext applicationContext) {
-        this(mappingContext, applicationContext.getEnvironment(), applicationContext);
+    OrientDbDatastore(MappingContext mappingContext, PropertyResolver connectionDetails, ConfigurableApplicationContext ctx) {
+        super(mappingContext, connectionDetails, ctx)
+        createDatabasePool(getConnectionProperties(connectionDetails))
     }
 
-    /**
-     * @see {@link #OrientDbDatastore(MappingContext, PropertyResolver, ConfigurableApplicationContext)}
-     */
-    public OrientDbDatastore(MappingContext mappingContext, ConfigurableApplicationContext applicationContext, OPartitionedDatabasePoolFactory orientDbPoolFactory) {
-        this(mappingContext, applicationContext.getEnvironment(), applicationContext, orientDbPoolFactory);
+    OrientDbDatastore(MappingContext mappingContext, ConfigurableApplicationContext ctx, OPartitionedDatabasePool orientPool) {
+        super(mappingContext, ctx.getEnvironment(), ctx)
+        this.orientPool = orientPool
     }
 
-    private OPartitionedDatabasePoolFactory createDatabasePool(PropertyResolver configuration) {
-        this.orientFactory = (OPartitionedDatabasePoolFactory) Class.forName("com.orientechnologies.orient.core.db.OPartitionedDatabasePoolFactory", true, Thread.currentThread().getContextClassLoader()).newInstance();
+    private Map getConnectionProperties(PropertyResolver propertyResolver) {
+        [url: connectionDetails?.getProperty(KEY_ORIENTDB_URL) ?: DEFAULT_ORIENTDB_URL,
+         userName: connectionDetails?.getProperty(KEY_ORIENTDB_USERNAME) ?: DEFAULT_ORIENTDB_USERNAME,
+         password: connectionDetails?.getProperty(KEY_ORIENTDB_PASSWORD) ?: DEFAULT_ORIENTDB_PASSWORD,
+         size: connectionDetails?.getProperty(KEY_ORIENTDB_POOL_SIZE) ?: DEFAULT_ORIENTDB_POOL_SIZE]
+    }
+
+    private createDatabasePool(Map connectionDetails = null) {
+        if (!this.orientPool) {
+            def connectionProperties = connectionDetails
+            if (!connectionDetails) connectionProperties = getConnectionProperties(null)
+            def poolClass = Class.forName("com.orientechnologies.orient.core.db.OPartitionedDatabasePool", true, Thread.currentThread().getContextClassLoader());
+            this.orientPool = (OPartitionedDatabasePool) poolClass.newInstance(connectionProperties.url, connectionProperties.userName, connectionProperties.password, connectionProperties.size);
+        }
     }
 
     @Override
     protected Session createSession(PropertyResolver connectionDetails) {
-        def url = connectionDetails.getProperty(KEY_ORIENTDB_URL) ?: DEFAULT_ORIENTDB_URL
-        def userName = connectionDetails.getProperty(KEY_ORIENTDB_USERNAME) ?: DEFAULT_ORIENTDB_USERNAME
-        def password = connectionDetails.getProperty(KEY_ORIENTDB_PASSWORD) ?: DEFAULT_ORIENTDB_PASSWORD
-        def connection = this.orientFactory.get(url, userName, password)
-        new OrientDbSession(this, mappingContext, getApplicationEventPublisher(), false, connection)
+        new OrientDbSession(this, mappingContext, getApplicationEventPublisher(), false, this.orientPool.acquire())
     }
 
     @Override
     void destroy() throws Exception {
         super.destroy()
-        if (this.orientFactory) {
-            this.orientFactory.close()
+        if (this.orientPool) {
+            this.orientPool.close()
         }
     }
 }

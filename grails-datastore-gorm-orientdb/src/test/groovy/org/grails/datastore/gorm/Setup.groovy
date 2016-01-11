@@ -1,7 +1,7 @@
 package org.grails.datastore.gorm
 
 import com.orientechnologies.orient.core.db.ODatabase
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
+import com.orientechnologies.orient.core.db.OPartitionedDatabasePool
 import com.orientechnologies.orient.core.sql.OCommandSQL
 import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
@@ -19,32 +19,29 @@ import org.springframework.context.support.GenericApplicationContext
 
 class Setup {
 
-    static connectionDetails = [username: "admin", password: "admin", url: "memory:test"]
+    static connectionDetails = [username: "admin", password: "admin", url: "memory:temp"]
+    static OPartitionedDatabasePool poolFactory
     static ODatabase db
     static OrientDbDatastore datastore
     static OrientDbSession session
 
     static destroy() {
-        datastore?.destroy()
         datastore = null
         session = null
-        db = null
+        poolFactory.acquire().drop()
+        poolFactory.close()
+        poolFactory = null
     }
 
     static Session setup(nativeClasses) {
-        db = new ODatabaseDocumentTx("memory:test")
-        if (!db.exists()) {
-            db = db.create()
-        } else {
-            db.open("admin", "admin")
-            db.drop()
-            db = new ODatabaseDocumentTx("memory:test").create()
-        }
+        poolFactory = new OPartitionedDatabasePool(connectionDetails.url, connectionDetails.username, connectionDetails.password)
+        poolFactory.autoCreate = true
+        db = poolFactory.acquire()
         def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         MappingContext mappingContext = new OrientDbMappingContext({})
-        datastore = new OrientDbDatastore(mappingContext, ctx)
+        datastore = new OrientDbDatastore(mappingContext, ctx, poolFactory)
 
         for (Class cls in classes) {
             mappingContext.addPersistentEntity(cls)
@@ -61,6 +58,7 @@ class Setup {
                 db.command(new OCommandSQL("CREATE CLASS $orientEntity.className extends E"))
             }
         }
+        db.close()
 
         def grailsApplication = new DefaultGrailsApplication(classes as Class[], Setup.getClassLoader())
         grailsApplication.mainContext = ctx
