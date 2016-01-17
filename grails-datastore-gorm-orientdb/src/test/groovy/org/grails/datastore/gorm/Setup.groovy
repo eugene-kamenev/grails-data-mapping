@@ -37,7 +37,7 @@ class Setup {
         poolFactory = new OPartitionedDatabasePool(connectionDetails.url, connectionDetails.username, connectionDetails.password)
         poolFactory.autoCreate = true
         db = poolFactory.acquire()
-        def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book]
+        def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book, ChildEntity]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         MappingContext mappingContext = new OrientDbMappingContext({})

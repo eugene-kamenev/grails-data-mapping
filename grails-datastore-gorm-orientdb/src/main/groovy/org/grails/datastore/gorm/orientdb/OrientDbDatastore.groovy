@@ -18,6 +18,7 @@ import org.springframework.core.env.PropertyResolver
  * memory/plocal/binary, by default in-memory embedded db will be used
  *
  * TODO: add dynamic username/password provider, as orientdb supports row-level security
+ * TODO: add schema initialization possibility
  * @author @eugenekamenev
  */
 @CompileStatic
@@ -27,12 +28,14 @@ class OrientDbDatastore extends AbstractDatastore implements DisposableBean, Sta
     static final String KEY_ORIENTDB_USERNAME = 'grails.orientdb.user'
     static final String KEY_ORIENTDB_PASSWORD = 'grails.orientdb.password'
     static final String KEY_ORIENTDB_POOL_SIZE = 'grails.orientdb.pool'
+    static final String KEY_ORIENTDB_INITIALIZE_SCHEMA = 'grails.orientdb.schema'
 
     static final String DEFAULT_ORIENTDB_URL = 'memory:test'
     static final String DEFAULT_ORIENTDB_USERNAME = 'admin'
     static final String DEFAULT_ORIENTDB_PASSWORD = 'admin'
     static final String DEFAULT_ORIENTDB_MODE = 'memory'
     static final String DEFAULT_ORIENTDB_POOL_SIZE = 10
+    static final String DEFAULT_ORIENTDB_INITIALIZE_SCHEMA = 'none'
 
     protected OPartitionedDatabasePool orientPool
 

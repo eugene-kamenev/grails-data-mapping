@@ -1,12 +1,15 @@
 package org.grails.datastore.gorm.orientdb.graph
 
 import com.orientechnologies.orient.core.id.ORecordId
+import grails.compiler.GrailsCompileStatic
 import grails.gorm.dirty.checking.DirtyCheck
 import grails.persistence.Entity
 import groovy.transform.EqualsAndHashCode
+import org.grails.datastore.gorm.orientdb.ast.OrientEntity
 import org.grails.datastore.gorm.query.transform.ApplyDetachedCriteriaTransform
 
 @Entity
+@OrientEntity
 class Pet implements Serializable {
     ORecordId id
     Long version
@@ -34,6 +37,8 @@ class Pet implements Serializable {
 @ApplyDetachedCriteriaTransform
 //@groovy.transform.EqualsAndHashCode - breaks gorm-neo4j: TODO: http://jira.grails.org/browse/GPNEO4J-10
 @EqualsAndHashCode(includes = ['firstName', 'lastName', 'age'])
+@GrailsCompileStatic
+@OrientEntity
 class Person implements Serializable, Comparable<Person> {
     static simpsons = where {
         lastName == "Simpson"
@@ -80,6 +85,7 @@ class Person implements Serializable, Comparable<Person> {
 }
 
 @Entity
+@OrientEntity
 class PetType implements Serializable {
     private static final long serialVersionUID = 1
     ORecordId id
@@ -94,6 +100,7 @@ class PetType implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Parent implements Serializable {
     private static final long serialVersionUID = 1
     ORecordId id
@@ -107,6 +114,7 @@ class Parent implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Child implements Serializable {
     private static final long serialVersionUID = 1
     ORecordId id
@@ -119,6 +127,7 @@ class Child implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class TestEntity implements Serializable {
     ORecordId id
     Long version
@@ -141,6 +150,7 @@ class TestEntity implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class ChildEntity implements Serializable {
     ORecordId id
     Long version
@@ -155,6 +165,7 @@ class ChildEntity implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Face implements Serializable {
     ORecordId id
     Long version
@@ -171,6 +182,7 @@ class Face implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Nose implements Serializable {
     ORecordId id
     Long version
@@ -185,6 +197,7 @@ class Nose implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Highway implements Serializable {
     ORecordId id
     Long version
@@ -199,6 +212,7 @@ class Highway implements Serializable {
 }
 
 @Entity
+@OrientEntity
 class Book implements Serializable {
     ORecordId id
     Long version

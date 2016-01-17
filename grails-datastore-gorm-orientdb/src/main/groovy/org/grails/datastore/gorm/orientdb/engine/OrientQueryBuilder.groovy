@@ -61,7 +61,10 @@ class OrientQueryBuilder extends Query {
     Query applyCriterions(GrailsQuery.Junction junction, Map queryArgs) {
         for(criterion in junction.criteria) {
             def handler = CRITERION_HANDLERS.get(criterion.class)
-            this.where(handler?.handle(entity, criterion, this))
+            if (handler != null) {
+                this.where(handler?.handle(entity, criterion, this))
+            }
+
         }
         this
     }
@@ -120,6 +123,12 @@ class OrientQueryBuilder extends Query {
                     } else {
                         query.select(projection(entity.getNativePropertyName(propertyName)))
                     }
+                }
+            },
+            (GrailsQuery.IdProjection) : new ProjectionHandler<GrailsQuery.IdProjection>() {
+                @Override
+                def handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.IdProjection IdProjection, Query query) {
+                    query.select(projection('@rid'))
                 }
             }
     ]

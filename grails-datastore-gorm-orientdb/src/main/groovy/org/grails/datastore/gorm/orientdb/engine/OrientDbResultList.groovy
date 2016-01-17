@@ -50,13 +50,14 @@ class OrientDbResultList extends AbstractResultList {
             Object id = dbObject.identity
             SessionImplementor session = (SessionImplementor) entityPersister.getSession();
             Class type = entityPersister.getPersistentEntity().getJavaClass();
-            //Object instance = session.getCachedInstance(type, (Serializable) id);
-            Object instance
+            Object instance = session.getCachedInstance(type, (Serializable) id);
             if (instance == null) {
-                instance = entityPersister.createObjectFromNativeEntry(entityPersister.persistentEntity, (Serializable) id, dbObject);
-                //session.cacheInstance(type, (Serializable) id, instance);
+                instance = entityPersister.unmarshallEntity(entityPersister.persistentEntity, dbObject);
+                session.cacheInstance(type, (Serializable) id, instance);
             }
             return instance;
+        } else {
+            println "not a document was in ResultList results"
         }
         return o;
     }
