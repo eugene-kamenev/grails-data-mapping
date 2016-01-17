@@ -7,7 +7,7 @@ import org.grails.datastore.gorm.orientdb.document.Person
 import org.grails.datastore.gorm.orientdb.document.Pet
 import org.grails.datastore.mapping.model.types.OneToOne
 
-class OrientDbDocumentOneToOneSpec extends GormDatastoreSpec {
+class OrientDbOneToOneSpec extends GormDatastoreSpec {
 
     def "Test persist and retrieve unidirectional many-to-one"() {
         given:"A domain model with a many-to-one"

@@ -205,3 +205,38 @@ class Book implements Serializable {
         author index:true
     }
 }
+
+@Entity
+@OrientEntity
+class Location implements Serializable {
+    ORecordId id
+    Long version
+    String name
+    String code = "DEFAULT"
+
+    def namedAndCode() {
+        "$name - $code"
+    }
+
+    static mapping = {
+        name index:true
+        code index:true
+    }
+}
+
+@Entity
+@OrientEntity
+class City extends Location {
+    BigDecimal latitude
+    BigDecimal longitude
+}
+
+@Entity
+@OrientEntity
+class Country extends Location {
+    Integer population = 0
+
+    static hasMany = [residents:Person]
+
+    Set residents
+}

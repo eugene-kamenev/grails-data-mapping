@@ -1,14 +1,14 @@
-package grails.gorm.tests.orientdb.document
+package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.document.ChildEntity
-import org.grails.datastore.gorm.orientdb.document.TestEntity
+import org.grails.datastore.gorm.orientdb.graph.ChildEntity
+import org.grails.datastore.gorm.orientdb.graph.TestEntity
 import spock.lang.Ignore
 
 /**
  * Abstract base test for criteria queries. Subclasses should do the necessary setup to configure GORM
  */
-class OrientDbDocumentCriteriaBuilderSpec extends GormDatastoreSpec {
+class OrientDbCriteriaBuilderSpec extends GormDatastoreSpec {
 
     void "Test count distinct projection"() {
         given:

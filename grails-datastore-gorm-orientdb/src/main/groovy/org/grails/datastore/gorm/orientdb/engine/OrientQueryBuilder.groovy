@@ -17,12 +17,12 @@ import static com.github.raymanrt.orientqb.query.ProjectionFunction.*
 @CompileStatic
 class OrientQueryBuilder extends Query {
     protected final OrientDbPersistentEntity entity
-    
+
     OrientQueryBuilder(OrientDbPersistentEntity entity) {
         this.entity = entity
         from(entity.className)
     }
-    
+
     Query build(GrailsQuery.ProjectionList projectionList, GrailsQuery.Junction criterion, Map queryArgs) {
         applyProjections(projectionList, queryArgs)
         applyCriterions(criterion, queryArgs)
@@ -37,7 +37,7 @@ class OrientQueryBuilder extends Query {
                 orderBy(projection(entity.getNativePropertyName(queryArgs.sort as String)))
             }
             if (queryArgs.sort instanceof Map) {
-                for(value in (Map)queryArgs.sort) {
+                for (value in (Map) queryArgs.sort) {
                     def orderProjection = projection(entity.getNativePropertyName(value.key as String))
                     if (value.value == GrailsQuery.Order.Direction.DESC) {
                         orderByDesc(orderProjection)
@@ -51,25 +51,34 @@ class OrientQueryBuilder extends Query {
     }
 
     Query applyProjections(GrailsQuery.ProjectionList projections, Map queryArgs) {
-        for(projection in projections.projectionList) {
+        for (projection in projections.projectionList) {
             def handler = PROJECT_HANDLERS.get(projection.class)
-            handler?.handle(entity, projection, this)
+            if (handler != null) {
+               handler?.handle(entity, projection, this)
+            } else {
+                throw new UnsupportedOperationException("Criterion of type ${projection.class.name} are not supported by GORM for OrientDb")
+            }
         }
         this
     }
-    
+
     Query applyCriterions(GrailsQuery.Junction junction, Map queryArgs) {
-        for(criterion in junction.criteria) {
+        for (criterion in junction.criteria) {
             def handler = CRITERION_HANDLERS.get(criterion.class)
             if (handler != null) {
-                this.where(handler?.handle(entity, criterion, this))
+                def clause = handler.handle(entity, criterion, this)
+                if (clause) {
+                    this.where(clause)
+                    continue;
+                }
             }
-
+            throw new UnsupportedOperationException("Criterion of type ${criterion.class.name} with values: ${criterion} is not supported by GORM for OrientDb")
         }
         this
     }
 
-    protected static Map<Class<? extends GrailsQuery.Projection>, ProjectionHandler> PROJECT_HANDLERS = [
+    protected
+    static Map<Class<? extends GrailsQuery.Projection>, ProjectionHandler> PROJECT_HANDLERS = [
             (GrailsQuery.CountProjection)        : new ProjectionHandler<GrailsQuery.CountProjection>() {
                 @Override
                 @CompileStatic
@@ -125,7 +134,7 @@ class OrientQueryBuilder extends Query {
                     }
                 }
             },
-            (GrailsQuery.IdProjection) : new ProjectionHandler<GrailsQuery.IdProjection>() {
+            (GrailsQuery.IdProjection)           : new ProjectionHandler<GrailsQuery.IdProjection>() {
                 @Override
                 def handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.IdProjection IdProjection, Query query) {
                     query.select(projection('@rid'))
@@ -133,7 +142,8 @@ class OrientQueryBuilder extends Query {
             }
     ]
 
-    public static Map<Class<? extends GrailsQuery.Criterion>, CriterionHandler> CRITERION_HANDLERS = [
+    public
+    static Map<Class<? extends GrailsQuery.Criterion>, CriterionHandler> CRITERION_HANDLERS = [
             (GrailsQuery.Conjunction)              : new CriterionHandler<GrailsQuery.Conjunction>() {
                 @Override
                 @CompileStatic
@@ -153,7 +163,7 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 Clause handle(OrientDbPersistentEntity entity, GrailsQuery.Disjunction criterion, Query query) {
-                    def inner = ((GrailsQuery.Junction) criterion).criteria.collect { GrailsQuery.Criterion it ->
+                    def inner = ((GrailsQuery.Junction) criterion).criteria.collect {GrailsQuery.Criterion it ->
                         def handler = CRITERION_HANDLERS.get(it.getClass())
                         if (handler == null) {
                             throw new UnsupportedOperationException("Criterion of type ${it.class.name} are not supported by GORM for OrientDb")
@@ -229,7 +239,7 @@ class OrientQueryBuilder extends Query {
                     projection(entity.getNativePropertyName(criterion.property)).isNull()
                 }
             },
-            (AssociationQuery)                                                  : new AssociationQueryHandler(),
+            (AssociationQuery)                     : new AssociationQueryHandler(),
             (GrailsQuery.GreaterThan)              : ComparisonCriterionHandler.GREATER_THAN,
             (GrailsQuery.GreaterThanEquals)        : ComparisonCriterionHandler.GREATER_THAN_EQUALS,
             (GrailsQuery.LessThan)                 : ComparisonCriterionHandler.LESS_THAN,
@@ -247,7 +257,9 @@ class OrientQueryBuilder extends Query {
                 @Override
                 @CompileStatic
                 Clause handle(OrientDbPersistentEntity entity, GrailsQuery.Between criterion, Query query) {
-                    projection(entity.getNativePropertyName(criterion.property)).between((Number)criterion.from, (Number)criterion.to)
+                    if (criterion.from instanceof Number && criterion.to instanceof Number) {
+                        projection(entity.getNativePropertyName(criterion.property)).between((Number) criterion.from, (Number) criterion.to)
+                    }
                 }
             },
             (GrailsQuery.SizeLessThanEquals)       : SizeCriterionHandler.LESS_THAN_EQUALS,
@@ -262,7 +274,7 @@ class OrientQueryBuilder extends Query {
     /**
      * Interface for handling projections when building OrientDb queries
      *
-     * @param < T >  The projection type
+     * @param < T >   The projection type
      */
     static interface ProjectionHandler<T extends GrailsQuery.Projection> {
         def handle(OrientDbPersistentEntity entity, T projection, Query query)
@@ -271,12 +283,11 @@ class OrientQueryBuilder extends Query {
     /**
      * Interface for handling criterion when building OrientDb queries
      *
-     * @param < T >  The criterion type
+     * @param < T >   The criterion type
      */
     static interface CriterionHandler<T extends GrailsQuery.Criterion> {
         Clause handle(OrientDbPersistentEntity entity, T criterion, Query query)
     }
-
 
     /**
      * Handles AssociationQuery instances
@@ -301,27 +312,52 @@ class OrientQueryBuilder extends Query {
      * @param < T >
      */
     @CompileStatic
-    static class ComparisonCriterionHandler<T extends GrailsQuery.PropertyCriterion> implements CriterionHandler<T> {
+    static
+    abstract class ComparisonCriterionHandler<T extends GrailsQuery.PropertyCriterion> implements CriterionHandler<T> {
         public static
-        final ComparisonCriterionHandler<GrailsQuery.GreaterThanEquals> GREATER_THAN_EQUALS = new ComparisonCriterionHandler<GrailsQuery.GreaterThanEquals>()
+        final ComparisonCriterionHandler<GrailsQuery.GreaterThanEquals> GREATER_THAN_EQUALS = new ComparisonCriterionHandler<GrailsQuery.GreaterThanEquals>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.GreaterThanEquals criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.GE, criterion.value)
+            }
+        }
         public static
-        final ComparisonCriterionHandler<GrailsQuery.GreaterThan> GREATER_THAN = new ComparisonCriterionHandler<GrailsQuery.GreaterThan>()
+        final ComparisonCriterionHandler<GrailsQuery.GreaterThan> GREATER_THAN = new ComparisonCriterionHandler<GrailsQuery.GreaterThan>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.GreaterThan criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.GT, criterion.value)
+            }
+        }
         public static
-        final ComparisonCriterionHandler<GrailsQuery.LessThan> LESS_THAN = new ComparisonCriterionHandler<GrailsQuery.LessThan>()
+        final ComparisonCriterionHandler<GrailsQuery.LessThan> LESS_THAN = new ComparisonCriterionHandler<GrailsQuery.LessThan>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.LessThan criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.LT, criterion.value)
+            }
+        }
         public static
-        final ComparisonCriterionHandler<GrailsQuery.LessThanEquals> LESS_THAN_EQUALS = new ComparisonCriterionHandler<GrailsQuery.LessThanEquals>()
+        final ComparisonCriterionHandler<GrailsQuery.LessThanEquals> LESS_THAN_EQUALS = new ComparisonCriterionHandler<GrailsQuery.LessThanEquals>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.LessThanEquals criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.LE, criterion.value)
+            }
+        }
         public static
-        final ComparisonCriterionHandler<GrailsQuery.NotEquals> NOT_EQUALS = new ComparisonCriterionHandler<GrailsQuery.NotEquals>()
+        final ComparisonCriterionHandler<GrailsQuery.NotEquals> NOT_EQUALS = new ComparisonCriterionHandler<GrailsQuery.NotEquals>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.NotEquals criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.NE, criterion.value)
+            }
+        }
         public static
-        final ComparisonCriterionHandler<GrailsQuery.Equals> EQUALS = new ComparisonCriterionHandler<GrailsQuery.Equals>()
-
-        ComparisonCriterionHandler() {
+        final ComparisonCriterionHandler<GrailsQuery.Equals> EQUALS = new ComparisonCriterionHandler<GrailsQuery.Equals>() {
+            @Override
+            Clause handle(OrientDbPersistentEntity entity, org.grails.datastore.mapping.query.Query.Equals criterion, Query query) {
+                clause(projection(entity.getNativePropertyName(criterion.property)), Operator.EQ, criterion.value)
+            }
         }
 
-        @Override
-        Clause handle(OrientDbPersistentEntity entity, T criterion, Query query) {
-            null
-        }
+        abstract Clause handle(OrientDbPersistentEntity entity, T criterion, Query query)
     }
 
     /**

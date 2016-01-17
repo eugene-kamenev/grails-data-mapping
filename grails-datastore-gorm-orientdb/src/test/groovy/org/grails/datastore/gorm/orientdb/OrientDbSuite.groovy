@@ -1,9 +1,6 @@
 package org.grails.datastore.gorm.orientdb
 
-import grails.gorm.tests.orientdb.document.OrientDbDocumentCriteriaBuilderSpec
-import grails.gorm.tests.orientdb.document.OrientDbDocumentDetachedCriteriaSpec
-import grails.gorm.tests.orientdb.document.OrientDbDocumentGormEnhancerSpec
-import grails.gorm.tests.orientdb.document.OrientDbDocumentOneToOneSpec
+import grails.gorm.tests.orientdb.graph.*
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 
@@ -20,7 +17,6 @@ import org.junit.runners.Suite
 //  QueryAfterPropertyChangeSpec,
 //  CircularOneToManySpec,
 //  InheritanceSpec,
-//  FindByMethodSpec,
 //  ListOrderBySpec,
 //  CriteriaBuilderSpec,
 //  NegationSpec,
@@ -38,7 +34,12 @@ import org.junit.runners.Suite
 //DetachedCriteriaSpec
 //SizeQuerySpec
   //      OneToManySpec,
-        OrientDbDocumentDetachedCriteriaSpec, OrientDbDocumentGormEnhancerSpec, OrientDbDocumentCriteriaBuilderSpec, OrientDbDocumentOneToOneSpec
+        OrientDbDetachedCriteriaSpec,
+        OrientDbGormEnhancerSpec,
+        OrientDbCriteriaBuilderSpec,
+        OrientDbOneToOneSpec,
+        OrientDbFindByMethodSpec,
+        //OrientDbOneToManySpec
 ])
 class OrientDbSuite {
 }

@@ -8,7 +8,7 @@ import spock.lang.Ignore
 /**
  * @author graemerocher
  */
-class OrientDbGraphGormEnhancerSpec extends GormDatastoreSpec {
+class OrientDbGormEnhancerSpec extends GormDatastoreSpec {
 
     void "Test basic CRUD operations"() {
         given:

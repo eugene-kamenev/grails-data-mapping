@@ -6,7 +6,7 @@ import grails.gorm.tests.GormDatastoreSpec
 import org.grails.datastore.gorm.orientdb.document.Person
 import spock.lang.IgnoreIf
 
-class OrientDbDocumentDetachedCriteriaSpec extends GormDatastoreSpec {
+class OrientDbDetachedCriteriaSpec extends GormDatastoreSpec {
     void "Test the list method returns a PagedResultList with pagination arguments"() {
         given:"A bunch of people"
         createPeople()

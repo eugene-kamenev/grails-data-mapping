@@ -10,6 +10,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
 import org.grails.datastore.mapping.model.PersistentProperty
+import org.grails.datastore.mapping.model.types.OneToMany
 
 /**
  * Helper methods for OrientDB GORM
@@ -45,30 +46,35 @@ abstract class OrientDbGormHelper {
      */
     static void setValue(OrientDbPersistentEntity entity, PersistentProperty property, OIdentifiable instance, Object value) {
         final def nativeName = entity.getNativePropertyName(property.name)
-        if (value instanceof OIdentifiable) {
-            if (instance instanceof ODocument) {
-                if (!value.identity.isNew()) {
-                    instance.field(nativeName, value.identity, OType.LINK)
-                } else {
-                    instance.field(nativeName, value, OType.LINK)
+        def valueToSet = value
+        OType orientType
+        if (valueToSet instanceof OIdentifiable) {
+            valueToSet = valueToSet.record
+            /*// not sure why, but orientdb saves links in different ways so handle this
+            if (!(valueToSet instanceof ODocument)) {
+                valueToSet = valueToSet.identity
+            } else {
+                if (!valueToSet.identity.isNew()) {
+                    valueToSet = valueToSet.identity
                 }
+            }*/
+            orientType = OType.LINK
+        }
+        if (valueToSet instanceof Iterable) {
+            if (property instanceof OneToMany) {
+                orientType = OType.LINKSET
+                valueToSet = valueToSet.collect { OIdentifiable val ->
+                    val.record
+                }.toSet()
             }
-            if (instance instanceof OrientElement) {
-                if (!value.identity.isNew()) {
-                    instance.setProperty(nativeName, value.identity, OType.LINK)
-                } else {
-                    instance.setProperty(nativeName, value, OType.LINK)
-                }
-            }
-            return;
         }
         if (instance instanceof ODocument) {
-            if (value == null && !instance.containsField(nativeName)) return;
-            instance.field(nativeName, value)
+            if (valueToSet == null && !instance.containsField(nativeName)) return;
+            instance.field(nativeName, valueToSet, orientType)
         }
         if (instance instanceof OrientElement) {
-            if (value == null && !instance.hasProperty(nativeName)) return;
-            instance.setProperty(nativeName, value)
+            if (valueToSet == null && !instance.hasProperty(nativeName)) return;
+            instance.setProperty(nativeName, valueToSet, orientType)
         }
     }
 
@@ -108,7 +114,7 @@ abstract class OrientDbGormHelper {
 
     static OIdentifiable saveEntry(OIdentifiable oIdentifiable) {
         if (oIdentifiable instanceof ODocument) {
-            return oIdentifiable.save()
+            return oIdentifiable.record.save()
         }
         if (oIdentifiable instanceof OrientVertex) {
             oIdentifiable.save()

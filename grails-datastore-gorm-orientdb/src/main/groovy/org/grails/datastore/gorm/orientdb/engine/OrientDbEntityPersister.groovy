@@ -11,10 +11,12 @@ import org.grails.datastore.gorm.orientdb.extensions.OrientDbGormHelper
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.engine.EntityPersister
+import org.grails.datastore.mapping.engine.Persister
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.PersistentProperty
 import org.grails.datastore.mapping.model.types.Association
+import org.grails.datastore.mapping.model.types.OneToMany
 import org.grails.datastore.mapping.model.types.Simple
 import org.grails.datastore.mapping.model.types.ToOne
 import org.grails.datastore.mapping.query.Query
@@ -54,7 +56,7 @@ class OrientDbEntityPersister extends EntityPersister {
         def orientEntity = (OrientDbPersistentEntity) pe
         def collection = []
         for (object in objs) {
-            this.persistEntity(pe, object)
+            collection << this.persistEntity(pe, object)
         }
         return collection
     }
@@ -79,7 +81,7 @@ class OrientDbEntityPersister extends EntityPersister {
         }
         def identity = OrientDbGormHelper.saveEntry(marshallEntity(orientEntity, obj)).identity
         orientDbSession().createEntityAccess(orientEntity, obj).setIdentifierNoConversion(identity)
-        identity
+        nativeEntry.getRecord()
     }
 
     @Override
@@ -140,25 +142,37 @@ class OrientDbEntityPersister extends EntityPersister {
             def nativeName = entity.getNativePropertyName(association.name)
             if (propertyValue) {
                 def associatedEntity = association.getAssociatedEntity()
+                def associationAccess = orientDbSession().createEntityAccess(associatedEntity, propertyValue)
                 if (association instanceof ToOne) {
-                    def associationAccess = orientDbSession().createEntityAccess(associatedEntity, propertyValue)
                     handleToOneMarshall((ToOne)association, access, associationAccess)
+                } else if (association instanceof OneToMany) {
+                    handleOneToManyMarshall((OneToMany) association, access, associationAccess)
                 }
             }
         }
         nativeObject
     }
 
+    void handleOneToManyMarshall(OneToMany association, EntityAccess entityAccess, EntityAccess associationAccess) {
+        println "handling $association"
+        if (!association.owningSide && association.referencedPropertyName == null) {
+            Persister persister = session.getPersister(associationAccess.persistentEntity)
+            def list = persister.persist((Iterable) associationAccess.getEntity())
+            OrientDbGormHelper.setValue((OrientDbPersistentEntity) entityAccess.persistentEntity, association, (OIdentifiable) entityAccess.entity['dbInstance'], list)
+        }
+    }
+
 
 
     void handleToOneMarshall(ToOne association, EntityAccess entityObject, EntityAccess associationObject) {
+        Persister persister = session.getPersister(associationObject.entity);
         def entity = entityObject.getEntity()
         if (association.foreignKeyInChild) {
-            this.persistEntity(association.associatedEntity, associationObject.entity)
+            persister.persist(associationObject.entity)
         } else {
             def nativeEntry = associationObject.entity['dbInstance']
             if (nativeEntry == null) {
-                this.persistEntity(association.associatedEntity, associationObject.getEntity())
+                persister.persist(associationObject.getEntity())
             }
             OrientDbGormHelper.setValue((OrientDbPersistentEntity) entityObject.persistentEntity, association, (OIdentifiable) entity['dbInstance'], ((OIdentifiable) associationObject.entity['dbInstance']));
         }
