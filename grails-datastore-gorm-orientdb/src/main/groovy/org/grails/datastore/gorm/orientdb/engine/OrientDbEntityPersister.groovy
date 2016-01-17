@@ -7,8 +7,11 @@ import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
+import org.grails.datastore.gorm.orientdb.collection.OrientDbLinkedSet
+import org.grails.datastore.gorm.orientdb.collection.OrientDbPersistentSet
 import org.grails.datastore.gorm.orientdb.extensions.OrientDbGormHelper
 import org.grails.datastore.mapping.core.Session
+import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.engine.EntityPersister
 import org.grails.datastore.mapping.engine.Persister
@@ -19,6 +22,7 @@ import org.grails.datastore.mapping.model.types.Association
 import org.grails.datastore.mapping.model.types.OneToMany
 import org.grails.datastore.mapping.model.types.Simple
 import org.grails.datastore.mapping.model.types.ToOne
+import org.grails.datastore.mapping.proxy.ProxyFactory
 import org.grails.datastore.mapping.query.Query
 import org.springframework.context.ApplicationEventPublisher
 
@@ -28,7 +32,6 @@ class OrientDbEntityPersister extends EntityPersister {
     public OrientDbEntityPersister(MappingContext mappingContext, PersistentEntity entity, Session session, ApplicationEventPublisher publisher) {
         super(mappingContext, entity, session, publisher);
     }
-
 
 
     @Override
@@ -75,6 +78,9 @@ class OrientDbEntityPersister extends EntityPersister {
     @Override
     protected Serializable persistEntity(PersistentEntity pe, Object obj) {
         def orientEntity = (OrientDbPersistentEntity) pe
+        ProxyFactory proxyFactory = getProxyFactory();
+        // if called internally, obj can potentially be a proxy, which won't work.
+        obj = proxyFactory.unwrap(obj);
         OIdentifiable nativeEntry = (OIdentifiable) obj['dbInstance']
         if (nativeEntry == null) {
             nativeEntry = OrientDbGormHelper.createNewOrientEntry(orientEntity, obj, orientDbSession())
@@ -89,6 +95,10 @@ class OrientDbEntityPersister extends EntityPersister {
         def orientEntity = (OrientDbPersistentEntity) pe
         def identity = orientDbSession().createEntityAccess(orientEntity, obj).getIdentifier()
         orientDbSession().nativeInterface.delete(createRecordIdWithKey(identity))
+    }
+
+    protected Object unwrapIfProxy(Object entity) {
+
     }
 
     @Override
@@ -144,7 +154,7 @@ class OrientDbEntityPersister extends EntityPersister {
                 def associatedEntity = association.getAssociatedEntity()
                 def associationAccess = orientDbSession().createEntityAccess(associatedEntity, propertyValue)
                 if (association instanceof ToOne) {
-                    handleToOneMarshall((ToOne)association, access, associationAccess)
+                    handleToOneMarshall((ToOne) association, access, associationAccess)
                 } else if (association instanceof OneToMany) {
                     handleOneToManyMarshall((OneToMany) association, access, associationAccess)
                 }
@@ -159,9 +169,13 @@ class OrientDbEntityPersister extends EntityPersister {
             Persister persister = session.getPersister(associationAccess.persistentEntity)
             def list = persister.persist((Iterable) associationAccess.getEntity())
             OrientDbGormHelper.setValue((OrientDbPersistentEntity) entityAccess.persistentEntity, association, (OIdentifiable) entityAccess.entity['dbInstance'], list)
+            return
+        }
+        if (!association.owningSide && association.referencedPropertyName != null) {
+            Persister persister = session.getPersister(associationAccess.persistentEntity)
+            persister.persist((Iterable) associationAccess.getEntity())
         }
     }
-
 
 
     void handleToOneMarshall(ToOne association, EntityAccess entityObject, EntityAccess associationObject) {
@@ -175,6 +189,12 @@ class OrientDbEntityPersister extends EntityPersister {
                 persister.persist(associationObject.getEntity())
             }
             OrientDbGormHelper.setValue((OrientDbPersistentEntity) entityObject.persistentEntity, association, (OIdentifiable) entity['dbInstance'], ((OIdentifiable) associationObject.entity['dbInstance']));
+            if (association.referencedPropertyName != null) {
+                def value = associationObject.getProperty(association.referencedPropertyName)
+                if (value instanceof Collection) {
+                    value.add(entity)
+                }
+            }
         }
     }
 
@@ -182,8 +202,8 @@ class OrientDbEntityPersister extends EntityPersister {
         def entity = entityAccess.entity
         if (association.owningSide && association.foreignKeyInChild) {
             def queryExecutor = new OrientDbAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, association, session)
-            def result = queryExecutor.query((OIdentifiable) entityAccess.identifier)[0]
-            entityAccess.setPropertyNoConversion(association.name, result);
+            def result = new OrientDbPersistentSet((Serializable) entityAccess.identifier, orientDbSession(), queryExecutor)
+            entityAccess.setProperty(association.name, result);
             return;
         }
         def value = OrientDbGormHelper.getValue((OrientDbPersistentEntity) entityAccess.persistentEntity, association, (OIdentifiable) entity['dbInstance'])
@@ -191,13 +211,26 @@ class OrientDbEntityPersister extends EntityPersister {
         if (value instanceof ORecordId && association.mapping.mappedForm.lazy) {
             println "lazy record id found"
         } else if (value instanceof ODocument) {
-            def cached = orientDbSession().getCachedEntry(association.associatedEntity, ((ODocument)value).identity)
+            def cached = orientDbSession().getCachedEntry(association.associatedEntity, ((ODocument) value).identity)
             if (cached == null) {
                 cached = unmarshallEntity((OrientDbPersistentEntity) association.associatedEntity, value)
             }
             entityAccess.setPropertyNoConversion(association.name, cached)
         } else {
-            println "something else here"
+            println "something else here $value"
+        }
+    }
+
+    void handleOneToManyUnmarshall(OneToMany association, EntityAccess entityAccess) {
+        def entity = entityAccess.entity
+        if (!association.owningSide && association.referencedPropertyName == null) {
+            entityAccess.setProperty(association.name, new OrientDbLinkedSet(entityAccess, orientDbSession(), association, (OIdentifiable) entity['dbInstance']))
+            return;
+        }
+        if (!association.owningSide && association.referencedPropertyName != null) {
+            def queryExecutor = (AssociationQueryExecutor) new OrientDbAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, association, session)
+            def associationSet = new OrientDbPersistentSet((Serializable) entityAccess.identifier, orientDbSession(), queryExecutor)
+            entityAccess.setPropertyNoConversion(association.name, associationSet)
         }
     }
 
@@ -215,12 +248,11 @@ class OrientDbEntityPersister extends EntityPersister {
                     entityAccess.setProperty(property.name, OrientDbGormHelper.getValue(entity, property, nativeEntry))
                 } else if (property instanceof Association) {
                     if (property instanceof ToOne) {
-                        handleToOneUnmarshall((ToOne)property, entityAccess)
+                        handleToOneUnmarshall((ToOne) property, entityAccess)
                     }
-
-                    // if (document.containsField(nativeName)) {
-                    // entityAccess.setPropertyNoConversion(property.name, unmarshallEntity((OrientDbPersistentEntity) association.associatedEntity, (ODocument) document.field(nativeName)));
-                    //}
+                    if (property instanceof OneToMany) {
+                        handleOneToManyUnmarshall((OneToMany) property, entityAccess)
+                    }
                 }
             }
             firePostLoadEvent(entityAccess.getPersistentEntity(), entityAccess);

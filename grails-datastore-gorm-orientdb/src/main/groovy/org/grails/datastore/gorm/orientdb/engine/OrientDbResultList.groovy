@@ -1,9 +1,9 @@
 package org.grails.datastore.gorm.orientdb.engine
 
 import com.orientechnologies.orient.core.record.impl.ODocument
+import com.orientechnologies.orient.core.sql.query.OResultSet
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.query.AbstractResultList
-import org.grails.datastore.mapping.core.SessionImplementor
 
 import javax.persistence.LockModeType
 
@@ -13,8 +13,8 @@ class OrientDbResultList extends AbstractResultList {
 
     protected final LockModeType lockMode
 
-    OrientDbResultList(int offset, Iterator cursor, OrientDbEntityPersister entityPersister) {
-        super(offset, cursor)
+    OrientDbResultList(int offset, OResultSet cursor, OrientDbEntityPersister entityPersister) {
+        super(offset, (Iterator) cursor.iterator())
         this.entityPersister = entityPersister
         this.lockMode = javax.persistence.LockModeType.NONE;
     }
@@ -28,9 +28,11 @@ class OrientDbResultList extends AbstractResultList {
     @Override
     protected Object nextDecoded() {
         def next = cursor.next()
+
         if (next instanceof ODocument) {
             def doc = (ODocument) next
             if (doc.className != null) {
+                println "Returning $next"
                 return doc
             } else {
                 if (doc.fields() == 1) {
@@ -45,16 +47,11 @@ class OrientDbResultList extends AbstractResultList {
 
     @Override
     protected Object convertObject(Object o) {
+        println "converting Object $o"
         if (o instanceof ODocument) {
             final ODocument dbObject = (ODocument) o;
-            Object id = dbObject.identity
-            SessionImplementor session = (SessionImplementor) entityPersister.getSession();
-            Class type = entityPersister.getPersistentEntity().getJavaClass();
-            Object instance = session.getCachedInstance(type, (Serializable) id);
-            if (instance == null) {
-                instance = entityPersister.unmarshallEntity(entityPersister.persistentEntity, dbObject);
-                session.cacheInstance(type, (Serializable) id, instance);
-            }
+            def instance = entityPersister.unmarshallEntity(entityPersister.persistentEntity, dbObject);
+            println "returning instance $instance"
             return instance;
         } else {
             println "not a document was in ResultList results"

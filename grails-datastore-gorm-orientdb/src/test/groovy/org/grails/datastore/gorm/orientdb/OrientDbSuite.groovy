@@ -39,7 +39,7 @@ import org.junit.runners.Suite
         OrientDbCriteriaBuilderSpec,
         OrientDbOneToOneSpec,
         OrientDbFindByMethodSpec,
-        //OrientDbOneToManySpec
+        OrientDbOneToManySpec
 ])
 class OrientDbSuite {
 }

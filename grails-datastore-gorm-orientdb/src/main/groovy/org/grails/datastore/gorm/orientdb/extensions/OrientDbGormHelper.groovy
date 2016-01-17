@@ -4,14 +4,11 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.id.ORecordId
 import com.orientechnologies.orient.core.metadata.schema.OType
 import com.orientechnologies.orient.core.record.impl.ODocument
-import com.tinkerpop.blueprints.impls.orient.OrientEdge
 import com.tinkerpop.blueprints.impls.orient.OrientElement
-import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
 import org.grails.datastore.gorm.orientdb.OrientDbSession
 import org.grails.datastore.mapping.model.PersistentProperty
 import org.grails.datastore.mapping.model.types.OneToMany
-
 /**
  * Helper methods for OrientDB GORM
  */
@@ -50,14 +47,6 @@ abstract class OrientDbGormHelper {
         OType orientType
         if (valueToSet instanceof OIdentifiable) {
             valueToSet = valueToSet.record
-            /*// not sure why, but orientdb saves links in different ways so handle this
-            if (!(valueToSet instanceof ODocument)) {
-                valueToSet = valueToSet.identity
-            } else {
-                if (!valueToSet.identity.isNew()) {
-                    valueToSet = valueToSet.identity
-                }
-            }*/
             orientType = OType.LINK
         }
         if (valueToSet instanceof Iterable) {
@@ -113,18 +102,7 @@ abstract class OrientDbGormHelper {
     }
 
     static OIdentifiable saveEntry(OIdentifiable oIdentifiable) {
-        if (oIdentifiable instanceof ODocument) {
             return oIdentifiable.record.save()
-        }
-        if (oIdentifiable instanceof OrientVertex) {
-            oIdentifiable.save()
-            return oIdentifiable
-        }
-        if (oIdentifiable instanceof OrientEdge) {
-            oIdentifiable.save()
-            return oIdentifiable
-        }
-        return null
     }
 
     static String getOrientClassName(OIdentifiable oIdentifiable) {

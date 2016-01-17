@@ -1,6 +1,7 @@
 package org.grails.datastore.gorm.orientdb.engine
 
 import com.orientechnologies.orient.core.record.impl.ODocument
+import com.orientechnologies.orient.core.sql.query.OResultSet
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
@@ -36,7 +37,8 @@ class OrientDbQuery extends org.grails.datastore.mapping.query.Query implements 
             list = executeQueryForDocument(orientEntity, criteria)
         }
         def persister = (OrientDbEntityPersister) getSession().getPersister(orientEntity)
-        return new OrientDbResultList(0, list.iterator(), persister)
+        println "query returned ${list.size()} result: \n $list"
+        return new OrientDbResultList(0, (OResultSet) list, persister)
     }
 
     private List executeQueryForDocument(OrientDbPersistentEntity entity, Query.Junction criteria) {
