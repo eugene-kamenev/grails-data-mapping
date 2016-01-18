@@ -1,6 +1,7 @@
 package org.grails.datastore.gorm.orientdb.document
 
 import com.orientechnologies.orient.core.id.ORecordId
+import com.orientechnologies.orient.core.record.ORecord
 import grails.gorm.dirty.checking.DirtyCheck
 import grails.persistence.Entity
 import groovy.transform.EqualsAndHashCode
@@ -239,4 +240,124 @@ class Country extends Location {
     static hasMany = [residents:Person]
 
     Set residents
+}
+
+@Entity
+@OrientEntity
+class PlantCategory implements Serializable {
+    ORecordId id
+    Long version
+    Set plants
+    String name
+
+    static hasMany = [plants:Plant]
+
+    static namedQueries = {
+//        withPlantsInPatch {
+//            plants {
+//                eq 'goesInPatch', true
+//            }
+//        }
+//        withPlantsThatStartWithG {
+//            plants {
+//                like 'name', 'G%'
+//            }
+//        }
+//        withPlantsInPatchThatStartWithG {
+//            withPlantsInPatch()
+//            withPlantsThatStartWithG()
+//        }
+    }
+
+    static mapping = {
+    }
+}
+
+@Entity
+@OrientEntity
+class Plant implements Serializable {
+    ORecordId id
+    Long version
+    boolean goesInPatch
+    String name
+
+    static mapping = {
+        name index:true
+        goesInPatch index:true
+    }
+}
+
+@Entity
+@OrientEntity
+class Publication implements Serializable {
+    ORecordId id
+    Long version
+    String title
+    Date datePublished
+    Boolean paperback = true
+
+    static mapping = {
+        title index:true
+        paperback index:true
+        datePublished index:true
+    }
+
+    static namedQueries = {
+
+        lastPublishedBefore { date ->
+            uniqueResult = true
+            le 'datePublished', date
+            order 'datePublished', 'desc'
+        }
+
+        recentPublications {
+            def now = new Date()
+            gt 'datePublished', now - 365
+        }
+
+        publicationsWithBookInTitle {
+            like 'title', 'Book%'
+        }
+
+        recentPublicationsByTitle { title ->
+            recentPublications()
+            eq 'title', title
+        }
+
+        latestBooks {
+            maxResults(10)
+            order("datePublished", "desc")
+        }
+
+        publishedBetween { start, end ->
+            between 'datePublished', start, end
+        }
+
+        publishedAfter { date ->
+            gt 'datePublished', date
+        }
+
+        paperbackOrRecent {
+            or {
+                def now = new Date()
+                gt 'datePublished', now - 365
+                paperbacks()
+            }
+        }
+
+        paperbacks {
+            eq 'paperback', true
+        }
+
+        paperbackAndRecent {
+            paperbacks()
+            recentPublications()
+        }
+
+        thisWeeksPaperbacks() {
+            paperbacks()
+            def today = new Date()
+            publishedBetween(today - 7, today)
+        }
+    }
 }

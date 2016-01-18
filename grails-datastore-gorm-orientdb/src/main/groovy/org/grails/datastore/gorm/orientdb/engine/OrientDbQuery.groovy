@@ -55,10 +55,10 @@ class OrientDbQuery extends org.grails.datastore.mapping.query.Query implements 
                 queryArgs.sort[order.property] = order.direction
             }
         }
-
         builder.build(projections, criteria, queryArgs)
         println "EXECUTING QUERY: " + builder.toString()
-        return session.documentTx.query(new OSQLSynchQuery(builder.toString()))
+        println "With params: $builder.namedParameters"
+        return session.documentTx.query(new OSQLSynchQuery(builder.toString()), builder.namedParameters)
     }
 
     private List executeQueryForGraph(OrientDbPersistentEntity entity, Query.Junction criteria) {

@@ -8,16 +8,13 @@ import org.junit.runners.Suite
 @Suite.SuiteClasses([
         //  ValidationSpec,
 //  GroovyProxySpec,
-//  CommonTypesPersistenceSpec,
-//  SaveAllSpec,
+ //CommonTypesPersistenceSpec,
 //  DomainEventsSpec,
 //  ProxyLoadingSpec,
 //  QueryAfterPropertyChangeSpec,
 //  CircularOneToManySpec,
 //  InheritanceSpec,
 //  ListOrderBySpec,
-//  CriteriaBuilderSpec,
-//  NamedQuerySpec,
 //  OrderBySpec,
 //  RangeQuerySpec,
 //  UpdateWithProxyPresentSpec,
@@ -35,7 +32,8 @@ import org.junit.runners.Suite
         OrientDbFindWhereSpec,
         OrientDbCrudOperationsSpec,
         OrientDbWithTransactionSpec,
-        OrientDbNegationSpec
+        OrientDbNegationSpec,
+        OrientDbNamedQuerySpec
 ])
 class OrientDbSuite {
 }
