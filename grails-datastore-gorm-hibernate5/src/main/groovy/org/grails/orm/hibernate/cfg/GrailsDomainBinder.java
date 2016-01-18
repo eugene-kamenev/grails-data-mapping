@@ -2681,7 +2681,9 @@ public class GrailsDomainBinder implements MetadataContributor {
                     if (cc.getScale() != -1) {
                         column.setScale(cc.getScale());
                     }
-                    column.setUnique(cc.isUnique());
+                    if(!mappedForm.isUniqueWithinGroup()) {
+                        column.setUnique(cc.isUnique());
+                    }
                 }
 
                 bindColumn(grailsProp, parentProperty, column, cc, path, table, sessionFactoryBeanName);
@@ -2828,7 +2830,7 @@ public class GrailsDomainBinder implements MetadataContributor {
 
     protected void createUniqueKeyForColumns(Table table, String columnName, List<Column> keyList) {
         Collections.reverse(keyList);
-        UniqueKey key = table.getOrCreateUniqueKey("unique_" + columnName);
+        UniqueKey key = table.getOrCreateUniqueKey("unique_" + table.getName() + '_' + columnName);
         List<?> columns = key.getColumns();
         if (columns.isEmpty()) {
             LOG.debug("create unique key for " + table.getName() + " columns = " + keyList);

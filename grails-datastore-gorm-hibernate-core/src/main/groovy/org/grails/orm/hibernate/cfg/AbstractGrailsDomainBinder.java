@@ -2008,9 +2008,13 @@ public abstract class AbstractGrailsDomainBinder {
     protected boolean canBindOneToOneWithSingleColumnAndForeignKey(Association currentGrailsProp) {
         if (currentGrailsProp.isBidirectional()) {
             final Association otherSide = currentGrailsProp.getInverseSide();
-            if (isHasOne(otherSide)) return false;
-            if (!currentGrailsProp.isOwningSide() && (otherSide.isOwningSide())) {
-                return true;
+            if(otherSide != null) {
+                if (isHasOne(otherSide)) {
+                    return false;
+                }
+                if (!currentGrailsProp.isOwningSide() && (otherSide.isOwningSide())) {
+                    return true;
+                }
             }
         }
         return false;
@@ -2713,7 +2717,9 @@ public abstract class AbstractGrailsDomainBinder {
                     if (cc.getScale() != -1) {
                         column.setScale(cc.getScale());
                     }
-                    column.setUnique(cc.isUnique());
+                    if(!mappedForm.isUniqueWithinGroup()) {
+                        column.setUnique(cc.isUnique());
+                    }
                 }
 
                 bindColumn(grailsProp, parentProperty, column, cc, path, table, sessionFactoryBeanName);
@@ -2861,7 +2867,7 @@ public abstract class AbstractGrailsDomainBinder {
 
     protected void createUniqueKeyForColumns(Table table, String columnName, List<Column> keyList) {
         Collections.reverse(keyList);
-        UniqueKey key = table.getOrCreateUniqueKey("unique_" + columnName);
+        UniqueKey key = table.getOrCreateUniqueKey("unique_" + table.getName() + '_' + columnName);
         List<?> columns = key.getColumns();
         if (columns.isEmpty()) {
             LOG.debug("create unique key for " + table.getName() + " columns = " + keyList);
