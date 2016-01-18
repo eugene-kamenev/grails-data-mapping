@@ -1,7 +1,6 @@
 package org.grails.datastore.gorm.orientdb
 
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
-import com.orientechnologies.orient.core.tx.OTransaction
 import com.tinkerpop.blueprints.impls.orient.OrientGraph
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orientdb.engine.OrientDbEntityPersister
@@ -9,9 +8,10 @@ import org.grails.datastore.mapping.core.AbstractSession
 import org.grails.datastore.mapping.engine.Persister
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
-import org.grails.datastore.mapping.transactions.SessionOnlyTransaction
 import org.grails.datastore.mapping.transactions.Transaction
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.support.DefaultTransactionDefinition
 /**
  * Represents OrientDB GORM Session implementation
  */
@@ -29,12 +29,18 @@ class OrientDbSession extends AbstractSession<ODatabaseDocumentTx> {
     @Override
     protected Persister createPersister(Class cls, MappingContext mappingContext) {
         final PersistentEntity entity = mappingContext.getPersistentEntity(cls.getName());
-        return (entity != null ) ? new OrientDbEntityPersister(mappingContext, entity, this, publisher) : null;
+        return (entity != null) ? new OrientDbEntityPersister(mappingContext, entity, this, publisher) : null;
     }
 
     @Override
     protected Transaction beginTransactionInternal() {
-        return new SessionOnlyTransaction<OTransaction>(currentDocumentConnection.getTransaction(), this);
+        new OrientDbTransaction(documentTx, createDefaultTransactionDefinition(null), true)
+    }
+
+    protected DefaultTransactionDefinition createDefaultTransactionDefinition(TransactionDefinition other) {
+        final DefaultTransactionDefinition transactionDefinition = other != null ? new DefaultTransactionDefinition(other) : new DefaultTransactionDefinition();
+        transactionDefinition.setName(OrientDbTransaction.DEFAULT_NAME);
+        return transactionDefinition;
     }
 
     OrientGraph getGraph() {
@@ -45,45 +51,34 @@ class OrientDbSession extends AbstractSession<ODatabaseDocumentTx> {
         currentActiveGraph
     }
 
+    @Override
+    void flush() {
+        if (transaction.active && !transaction.rollbackOnly) {
+            transaction.commit()
+        }
+        super.flush()
+    }
+
+    @Override
+    void clear() {
+        if (!transaction.active && transaction.rollbackOnly) {
+            transaction.rollbackOnly()
+        }
+        super.clear()
+    }
+
     ODatabaseDocumentTx getDocumentTx() {
-        println "getting native interface"
         currentDocumentConnection
     }
 
     @Override
     ODatabaseDocumentTx getNativeInterface() {
-        println "getting native interface"
         return this.currentDocumentConnection
     }
 
     @Override
-    void clear() {
-        println "session cleared"
-        super.clear()
-        if (currentActiveGraph != null) {
-            if (!currentActiveGraph.closed) {
-                println "graph shutdown call"
-                currentActiveGraph.shutdown(false, false)
-            }
-        }
-    }
-
-    @Override
-    void flush() {
-       println "session flushed"
-       super.flush()
-        if (currentActiveGraph != null) {
-            if (!currentActiveGraph.closed) {
-                println "graph shutdown call"
-                currentActiveGraph.shutdown(false, true)
-            }
-        }
-       getTransaction().nativeTransaction.commit()
-    }
-
-    @Override
-    SessionOnlyTransaction<OTransaction> getTransaction() {
-        return (SessionOnlyTransaction<OTransaction>) super.getTransaction()
+    OrientDbTransaction getTransaction() {
+        (OrientDbTransaction) super.getTransaction()
     }
 
     @Override

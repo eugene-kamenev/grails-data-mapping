@@ -85,9 +85,9 @@ class OrientDbEntityPersister extends EntityPersister {
         if (nativeEntry == null) {
             nativeEntry = OrientDbGormHelper.createNewOrientEntry(orientEntity, obj, orientDbSession())
         }
-        def identity = OrientDbGormHelper.saveEntry(marshallEntity(orientEntity, obj)).identity
-        orientDbSession().createEntityAccess(orientEntity, obj).setIdentifierNoConversion(identity)
-        nativeEntry.getRecord()
+        OrientDbGormHelper.saveEntry(marshallEntity(orientEntity, obj))
+        orientDbSession().createEntityAccess(orientEntity, obj).setIdentifierNoConversion(nativeEntry.identity)
+        nativeEntry.record
     }
 
     @Override

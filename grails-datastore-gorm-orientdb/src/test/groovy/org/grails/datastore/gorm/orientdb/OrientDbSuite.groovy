@@ -1,6 +1,6 @@
 package org.grails.datastore.gorm.orientdb
 
-import grails.gorm.tests.orientdb.graph.*
+import grails.gorm.tests.orientdb.document.*
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 
@@ -9,9 +9,7 @@ import org.junit.runners.Suite
         //  ValidationSpec,
 //  GroovyProxySpec,
 //  CommonTypesPersistenceSpec,
-//  OneToManySpec
 //  SaveAllSpec,
-//  GormEnhancerSpec,
 //  DomainEventsSpec,
 //  ProxyLoadingSpec,
 //  QueryAfterPropertyChangeSpec,
@@ -26,12 +24,8 @@ import org.junit.runners.Suite
 //  UpdateWithProxyPresentSpec,
 //  AttachMethodSpec,
 //  WithTransactionSpec,
-//  CrudOperationsSpec,
 //  SaveAllSpec,
 //  DeleteAllSpec
-//    OneToOneSpec
-//    FindWhereSpec
-//DetachedCriteriaSpec
 //SizeQuerySpec
   //      OneToManySpec,
         OrientDbDetachedCriteriaSpec,
@@ -39,7 +33,10 @@ import org.junit.runners.Suite
         OrientDbCriteriaBuilderSpec,
         OrientDbOneToOneSpec,
         OrientDbFindByMethodSpec,
-        OrientDbOneToManySpec
+        OrientDbOneToManySpec,
+        OrientDbFindWhereSpec,
+        OrientDbCrudOperationsSpec,
+        OrientDbWithTransactionSpec
 ])
 class OrientDbSuite {
 }
