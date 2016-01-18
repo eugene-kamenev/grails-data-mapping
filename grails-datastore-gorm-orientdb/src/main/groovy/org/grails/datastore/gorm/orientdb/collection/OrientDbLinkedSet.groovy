@@ -31,13 +31,10 @@ class OrientDbLinkedSet implements Set {
         if (delegate == null) {
             def tempList = []
             def record = nativeEntry.record
-            if (nativeEntry != null) {
-                def linkedList = []
-                if (record instanceof ODocument) {
-                    def persister = (OrientDbEntityPersister) session.getPersister(association.associatedEntity)
-                    tempList = ((Iterable<OIdentifiable>) record.field(holder.getNativePropertyName(association.name))).collect { OIdentifiable id ->
-                        persister.unmarshallEntity((OrientDbPersistentEntity) association.associatedEntity, id)
-                    }
+            if (record instanceof ODocument) {
+                def persister = (OrientDbEntityPersister) session.getPersister(association.associatedEntity)
+                tempList = ((Iterable<OIdentifiable>) record.field(holder.getNativePropertyName(association.name))).collect {OIdentifiable id ->
+                    persister.unmarshallEntity((OrientDbPersistentEntity) association.associatedEntity, id)
                 }
             }
             delegate = tempList

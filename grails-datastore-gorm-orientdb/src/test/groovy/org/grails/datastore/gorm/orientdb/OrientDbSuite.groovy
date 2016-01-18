@@ -17,7 +17,6 @@ import org.junit.runners.Suite
 //  InheritanceSpec,
 //  ListOrderBySpec,
 //  CriteriaBuilderSpec,
-//  NegationSpec,
 //  NamedQuerySpec,
 //  OrderBySpec,
 //  RangeQuerySpec,
@@ -27,7 +26,6 @@ import org.junit.runners.Suite
 //  SaveAllSpec,
 //  DeleteAllSpec
 //SizeQuerySpec
-  //      OneToManySpec,
         OrientDbDetachedCriteriaSpec,
         OrientDbGormEnhancerSpec,
         OrientDbCriteriaBuilderSpec,
@@ -36,7 +34,8 @@ import org.junit.runners.Suite
         OrientDbOneToManySpec,
         OrientDbFindWhereSpec,
         OrientDbCrudOperationsSpec,
-        OrientDbWithTransactionSpec
+        OrientDbWithTransactionSpec,
+        OrientDbNegationSpec
 ])
 class OrientDbSuite {
 }

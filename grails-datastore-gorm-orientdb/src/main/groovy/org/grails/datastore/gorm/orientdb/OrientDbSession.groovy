@@ -10,8 +10,7 @@ import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.transactions.Transaction
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.transaction.TransactionDefinition
-import org.springframework.transaction.support.DefaultTransactionDefinition
+
 /**
  * Represents OrientDB GORM Session implementation
  */
@@ -34,17 +33,10 @@ class OrientDbSession extends AbstractSession<ODatabaseDocumentTx> {
 
     @Override
     protected Transaction beginTransactionInternal() {
-        new OrientDbTransaction(documentTx, createDefaultTransactionDefinition(null), true)
-    }
-
-    protected DefaultTransactionDefinition createDefaultTransactionDefinition(TransactionDefinition other) {
-        final DefaultTransactionDefinition transactionDefinition = other != null ? new DefaultTransactionDefinition(other) : new DefaultTransactionDefinition();
-        transactionDefinition.setName(OrientDbTransaction.DEFAULT_NAME);
-        return transactionDefinition;
+        new OrientDbTransaction(documentTx)
     }
 
     OrientGraph getGraph() {
-        println "getting graph"
         if (currentActiveGraph == null) {
             currentActiveGraph = new OrientGraph(documentTx)
         }
@@ -61,10 +53,24 @@ class OrientDbSession extends AbstractSession<ODatabaseDocumentTx> {
 
     @Override
     void clear() {
+        super.clear()
         if (!transaction.active && transaction.rollbackOnly) {
             transaction.rollbackOnly()
         }
-        super.clear()
+
+    }
+
+    @Override
+    void disconnect() {
+        if (isConnected()) {
+            super.disconnect()
+            if (currentActiveGraph != null && !currentActiveGraph.closed) {
+                currentActiveGraph.shutdown(false, false)
+            }
+            if (!documentTx.closed) {
+                documentTx.close()
+            }
+        }
     }
 
     ODatabaseDocumentTx getDocumentTx() {

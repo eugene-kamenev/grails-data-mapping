@@ -3,11 +3,9 @@ package org.grails.datastore.gorm.orientdb
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
 import groovy.transform.CompileStatic
 import org.grails.datastore.mapping.transactions.Transaction
-import org.springframework.transaction.TransactionDefinition
-import org.springframework.transaction.support.DefaultTransactionDefinition
 
 @CompileStatic
-class OrientDbTransaction implements Transaction<ODatabaseDocumentTx>, Closeable {
+class OrientDbTransaction implements Transaction<ODatabaseDocumentTx> {
 
     static final String DEFAULT_NAME = "OrientDbTransaction"
 
@@ -15,14 +13,9 @@ class OrientDbTransaction implements Transaction<ODatabaseDocumentTx>, Closeable
 
     ODatabaseDocumentTx documentTx
     boolean rollbackOnly = false
-    final boolean sessionCreated
-    TransactionDefinition transactionDefinition
 
-    OrientDbTransaction(ODatabaseDocumentTx documentTx, TransactionDefinition transactionDefinition = new DefaultTransactionDefinition(), boolean sessionCreated = false) {
-        this.transactionDefinition = transactionDefinition
+    OrientDbTransaction(ODatabaseDocumentTx documentTx) {
         this.documentTx = documentTx.begin()
-        this.sessionCreated = sessionCreated
-        println "new transaction started"
     }
 
     @Override
@@ -62,15 +55,5 @@ class OrientDbTransaction implements Transaction<ODatabaseDocumentTx>, Closeable
     @Override
     void setTimeout(int timeout) {
         throw new UnsupportedOperationException()
-    }
-
-    @Override
-    void close() throws IOException {
-        if(!rollbackOnly && isActive()) {
-            println "commiting on close"
-            documentTx.transaction.commit()
-            documentTx.close()
-            active = false
-        }
     }
 }

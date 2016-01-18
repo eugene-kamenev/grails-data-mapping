@@ -182,7 +182,7 @@ class OrientQueryBuilder extends Query {
                     CriterionHandler<GrailsQuery.Disjunction> handler = {->
                         CRITERION_HANDLERS.get(GrailsQuery.Disjunction)
                     }.call()
-                    null
+                    not(handler.handle(entity, disjunction, query))
                 }
             },
             (GrailsQuery.Equals)                   : new CriterionHandler<GrailsQuery.Equals>() {

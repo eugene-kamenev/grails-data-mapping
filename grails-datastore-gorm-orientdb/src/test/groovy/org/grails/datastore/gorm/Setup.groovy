@@ -52,7 +52,6 @@ class Setup {
         }
         OrientGraph graph = null
         mappingContext.getPersistentEntities().each { PersistentEntity e ->
-            println "added persistent entity $e"
             def orientEntity = (OrientDbPersistentEntity) e
             if (orientEntity.isVertex()) {
                 if (graph == null) {
