@@ -8,6 +8,9 @@ import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.types.Association
 import org.grails.datastore.mapping.query.Query
 
+/**
+ * Executor that handles relations from inverse side.
+ */
 @CompileStatic
 class OrientDbAssociationQueryExecutor implements AssociationQueryExecutor<OIdentifiable, Object> {
     OIdentifiable key

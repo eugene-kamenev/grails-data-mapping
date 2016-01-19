@@ -6,34 +6,25 @@ import org.junit.runners.Suite
 
 @RunWith(Suite)
 @Suite.SuiteClasses([
-        //  ValidationSpec,
-//  GroovyProxySpec,
- //CommonTypesPersistenceSpec,
-//  DomainEventsSpec,
-//  ProxyLoadingSpec,
-//  QueryAfterPropertyChangeSpec,
-//  CircularOneToManySpec,
-//  InheritanceSpec,
-//  ListOrderBySpec,
-//  OrderBySpec,
-//  RangeQuerySpec,
-//  UpdateWithProxyPresentSpec,
-//  AttachMethodSpec,
-//  WithTransactionSpec,
-//  SaveAllSpec,
-//  DeleteAllSpec
-//SizeQuerySpec
-        OrientDbDetachedCriteriaSpec,
-        OrientDbGormEnhancerSpec,
         OrientDbCriteriaBuilderSpec,
-        OrientDbOneToOneSpec,
-        OrientDbFindByMethodSpec,
-        OrientDbOneToManySpec,
-        OrientDbFindWhereSpec,
         OrientDbCrudOperationsSpec,
-        OrientDbWithTransactionSpec,
+        OrientDbDeleteAllSpec,
+        OrientDbDetachedCriteriaSpec,
+        OrientDbFindByMethodSpec,
+        OrientDbFindWhereSpec,
+        OrientDbGormEnhancerSpec,
+        OrientDbGroovyProxySpec,
+        OrientDbNamedQuerySpec,
         OrientDbNegationSpec,
-        OrientDbNamedQuerySpec
+        OrientDbOneToManySpec,
+        OrientDbOneToOneSpec,
+        OrientDbPagedResultSpec,
+        OrientDbQueryByAssociationSpec,
+        OrientDbQueryByNullSpec,
+        OrientDbRangeQuerySpec,
+        OrientDbSaveAllSpec,
+        OrientDbSizeQuerySpec,
+        OrientDbWithTransactionSpec
 ])
 class OrientDbSuite {
 }
