@@ -293,6 +293,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
                 }
             }
         }
+        gormEntityTrait = Class.forName("grails.orient.OrientEntity")
         return gormEntityTrait
     }
 
