@@ -1,7 +1,7 @@
 package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.graph.Book
+import org.grails.datastore.gorm.orient.entity.graph.Book
 
 class OrientDbNegationSpec extends GormDatastoreSpec {
     void "Test negation in dynamic finder"() {

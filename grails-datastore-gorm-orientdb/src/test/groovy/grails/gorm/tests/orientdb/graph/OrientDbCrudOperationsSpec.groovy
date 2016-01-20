@@ -2,9 +2,8 @@ package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
 import grails.validation.ValidationException
-import org.grails.datastore.gorm.orientdb.graph.ChildEntity
-import org.grails.datastore.gorm.orientdb.graph.TestEntity
-import spock.lang.IgnoreRest
+import org.grails.datastore.gorm.orient.entity.graph.ChildEntity
+import org.grails.datastore.gorm.orient.entity.graph.TestEntity
 
 class OrientDbCrudOperationsSpec extends GormDatastoreSpec {
     void "Test get using a string-based key"() {

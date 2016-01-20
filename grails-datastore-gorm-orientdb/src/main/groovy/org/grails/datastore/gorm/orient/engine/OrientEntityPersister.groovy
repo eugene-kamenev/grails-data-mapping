@@ -5,10 +5,9 @@ import com.orientechnologies.orient.core.id.ORecordId
 import com.orientechnologies.orient.core.record.ORecord
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.tinkerpop.blueprints.impls.orient.OrientElement
-import grails.orientdb.OrientEntity
 import groovy.transform.CompileStatic
-import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.collection.OrientLinkedSet
 import org.grails.datastore.gorm.orient.collection.OrientPersistentSet
 import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
@@ -75,7 +74,6 @@ class OrientEntityPersister extends EntityPersister {
 
     @Override
     protected Serializable persistEntity(PersistentEntity pe, Object obj) {
-        println OrientEntity.isAssignableFrom(obj.class)
         def orientEntity = (OrientPersistentEntity) pe
         ProxyFactory proxyFactory = getProxyFactory();
         // if called internally, obj can potentially be a proxy, which won't work.
@@ -254,6 +252,10 @@ class OrientEntityPersister extends EntityPersister {
 
     Object unmarshallFromGraph(OrientPersistentEntity entity, OrientElement element) {
         throw new IllegalAccessException("Not yet implemented")
+    }
+
+    ORecord getRecord(Object recordId) {
+        return OrientGormHelper.createRecordId(recordId).identity.record
     }
 
     @Override

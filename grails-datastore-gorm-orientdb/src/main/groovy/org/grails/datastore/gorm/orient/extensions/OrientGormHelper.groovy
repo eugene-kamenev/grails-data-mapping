@@ -5,13 +5,18 @@ import com.orientechnologies.orient.core.id.ORecordId
 import com.orientechnologies.orient.core.metadata.schema.OType
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.tinkerpop.blueprints.impls.orient.OrientElement
+import groovy.transform.CompileStatic
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.FromString
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientDbSession
 import org.grails.datastore.mapping.model.PersistentProperty
 import org.grails.datastore.mapping.model.types.OneToMany
+
 /**
  * Helper methods for OrientDB GORM
  */
+@CompileStatic
 abstract class OrientGormHelper {
 
     /**
@@ -109,5 +114,27 @@ abstract class OrientGormHelper {
         if (oIdentifiable instanceof ODocument) return oIdentifiable.className;
         if (oIdentifiable instanceof OrientElement) return oIdentifiable.record.className;
         return null
+    }
+
+    /**
+     * Check if recordId is new or invalid, apply a closure on recordId if needed
+     *
+     * @param object
+     * @param converted
+     * @return
+     */
+    static boolean checkForRecordIds(List object, List converted, @ClosureParams(value = FromString, options = ['com.orientechnologies.orient.core.id.ORecordId']) Closure closure = null) {
+        def invalidFound = false
+        converted.addAll(object.collect { id ->
+            if (id != null) {
+                def recordId = createRecordId(id)
+                closure?.call(recordId)
+                invalidFound = recordId.isValid() && recordId.isNew()
+                return recordId
+            }
+            invalidFound = true
+            return null
+        })
+        return invalidFound
     }
 }

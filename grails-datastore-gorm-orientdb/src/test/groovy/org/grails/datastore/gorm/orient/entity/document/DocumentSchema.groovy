@@ -295,6 +295,7 @@ class PlantCategory implements Serializable {
 }
 
 @Entity
+
 class Plant implements Serializable {
     static mapWith = 'orient'
 

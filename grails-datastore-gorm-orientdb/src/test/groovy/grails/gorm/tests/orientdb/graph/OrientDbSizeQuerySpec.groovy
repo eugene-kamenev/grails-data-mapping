@@ -1,8 +1,8 @@
 package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.graph.Country
-import org.grails.datastore.gorm.orientdb.graph.Person
+import org.grails.datastore.gorm.orient.entity.graph.Country
+import org.grails.datastore.gorm.orient.entity.graph.Person
 
 /**
  * Tests for querying the size of collections etc.

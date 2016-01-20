@@ -1,8 +1,8 @@
 package grails.gorm.tests.orientdb.document
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.extensions.OrientDbGormHelper
-import org.grails.datastore.gorm.orientdb.document.Location
+import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
+import org.grails.datastore.gorm.orient.entity.document.Location
 import org.grails.datastore.gorm.proxy.GroovyProxyFactory
 import org.springframework.dao.DataIntegrityViolationException
 
@@ -18,12 +18,12 @@ class OrientDbGroovyProxySpec extends GormDatastoreSpec {
             }
             
         when:"A proxy is loaded for an instance that doesn't exist"
-            def location = Location.proxy(OrientDbGormHelper.createRecordId('#-1:1'))
+            def location = Location.proxy(OrientGormHelper.createRecordId('#-1:1'))
 
         then:"The proxy is in a valid state"
 
             location != null
-            OrientDbGormHelper.createRecordId('#-1:1') == location.id
+            OrientGormHelper.createRecordId('#-1:1') == location.id
             false == location.isInitialized()
             false == location.initialized
 
@@ -76,7 +76,7 @@ class OrientDbGroovyProxySpec extends GormDatastoreSpec {
             }
 
         when:
-            def location = Location.proxy(OrientDbGormHelper.createRecordId('#-1:-1'))
+            def location = Location.proxy(OrientGormHelper.createRecordId('#-1:-1'))
             location.metaClass = null
         then:
             location.metaClass != null
@@ -91,7 +91,7 @@ class OrientDbGroovyProxySpec extends GormDatastoreSpec {
             }
 
         when:
-            def location = Location.proxy(OrientDbGormHelper.createRecordId('#-1:-1'))
+            def location = Location.proxy(OrientGormHelper.createRecordId('#-1:-1'))
             location.setMetaClass(null)
         then:
             location.metaClass != null

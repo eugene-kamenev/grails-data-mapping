@@ -1,7 +1,7 @@
 package grails.gorm.tests.orientdb.document
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.document.Person
+import org.grails.datastore.gorm.orient.entity.document.Person
 
 class OrientDbDeleteAllSpec extends GormDatastoreSpec {
 

@@ -2,8 +2,8 @@ package grails.gorm.tests.orientdb.document
 
 import grails.gorm.tests.GormDatastoreSpec
 import grails.gorm.tests.orientdb.graph.TestCheckedException
-import org.grails.datastore.gorm.orientdb.document.ChildEntity
-import org.grails.datastore.gorm.orientdb.document.TestEntity
+import org.grails.datastore.gorm.orient.entity.document.ChildEntity
+import org.grails.datastore.gorm.orient.entity.document.TestEntity
 
 class OrientDbWithTransactionSpec extends GormDatastoreSpec {
 

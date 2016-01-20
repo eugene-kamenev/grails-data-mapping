@@ -1,10 +1,10 @@
 package grails.gorm.tests.orientdb.document
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.document.Face
-import org.grails.datastore.gorm.orientdb.document.Nose
-import org.grails.datastore.gorm.orientdb.document.Person
-import org.grails.datastore.gorm.orientdb.document.Pet
+import org.grails.datastore.gorm.orient.entity.document.Face
+import org.grails.datastore.gorm.orient.entity.document.Nose
+import org.grails.datastore.gorm.orient.entity.document.Person
+import org.grails.datastore.gorm.orient.entity.document.Pet
 import org.grails.datastore.mapping.model.types.OneToOne
 
 class OrientDbOneToOneSpec extends GormDatastoreSpec {

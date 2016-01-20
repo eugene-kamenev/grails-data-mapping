@@ -1,17 +1,17 @@
 package org.grails.datastore.gorm.orient
 
 import groovy.transform.CompileStatic
-import org.grails.datastore.gorm.orient.mapping.OrientDbClassMapping
-import org.grails.datastore.gorm.orient.mapping.config.OrientDbEntity
+import org.grails.datastore.gorm.orient.mapping.OrientClassMapping
+import org.grails.datastore.gorm.orient.mapping.config.OrientEntity
 import org.grails.datastore.mapping.model.AbstractPersistentEntity
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentProperty
 
 @CompileStatic
-class OrientPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> {
+class OrientPersistentEntity extends AbstractPersistentEntity<OrientEntity> {
 
-    protected final OrientDbEntity mappedForm
-    protected final OrientDbClassMapping classMapping
+    protected final OrientEntity mappedForm
+    protected final OrientClassMapping classMapping
     protected String orientClassName
 
     OrientPersistentEntity(Class javaClass, MappingContext context) {
@@ -24,13 +24,13 @@ class OrientPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> {
             this.mappedForm = null;
         }
         else {
-            this.mappedForm = (OrientDbEntity) context.getMappingFactory().createMappedForm(this);
+            this.mappedForm = (OrientEntity) context.getMappingFactory().createMappedForm(this);
         }
         this.external = external
-        this.classMapping = new OrientDbClassMapping(this, context)
+        this.classMapping = new OrientClassMapping(this, context)
     }
 
-    OrientDbEntity getMappedForm() {
+    OrientEntity getMappedForm() {
         mappedForm
     }
 
@@ -50,7 +50,7 @@ class OrientPersistentEntity extends AbstractPersistentEntity<OrientDbEntity> {
         edge || vertex
     }
 
-    OrientDbClassMapping getClassMapping() {
+    OrientClassMapping getClassMapping() {
         classMapping
     }
 

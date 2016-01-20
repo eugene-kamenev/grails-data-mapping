@@ -1,8 +1,8 @@
 package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.graph.ChildEntity
-import org.grails.datastore.gorm.orientdb.graph.TestEntity
+import org.grails.datastore.gorm.orient.entity.graph.ChildEntity
+import org.grails.datastore.gorm.orient.entity.graph.TestEntity
 import spock.lang.Ignore
 
 /**

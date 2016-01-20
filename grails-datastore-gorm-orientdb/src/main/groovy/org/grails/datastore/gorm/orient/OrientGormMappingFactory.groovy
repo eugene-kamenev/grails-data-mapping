@@ -2,7 +2,7 @@ package org.grails.datastore.gorm.orient
 
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
-import org.grails.datastore.gorm.orient.mapping.config.OrientDbEntity
+import org.grails.datastore.gorm.orient.mapping.config.OrientEntity
 import org.grails.datastore.mapping.config.AbstractGormMappingFactory
 import org.grails.datastore.mapping.config.Property
 import org.grails.datastore.mapping.model.ClassMapping
@@ -22,7 +22,7 @@ class OrientGormMappingFactory extends AbstractGormMappingFactory {
 
     @Override
     protected Class getEntityMappedFormType() {
-        OrientDbEntity
+        OrientEntity
     }
 
     @Override

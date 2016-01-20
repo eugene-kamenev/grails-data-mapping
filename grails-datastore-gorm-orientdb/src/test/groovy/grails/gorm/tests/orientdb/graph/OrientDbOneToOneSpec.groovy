@@ -1,10 +1,10 @@
 package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.graph.Face
-import org.grails.datastore.gorm.orientdb.graph.Nose
-import org.grails.datastore.gorm.orientdb.graph.Person
-import org.grails.datastore.gorm.orientdb.graph.Pet
+import org.grails.datastore.gorm.orient.entity.graph.Face
+import org.grails.datastore.gorm.orient.entity.graph.Nose
+import org.grails.datastore.gorm.orient.entity.graph.Person
+import org.grails.datastore.gorm.orient.entity.graph.Pet
 import org.grails.datastore.mapping.model.types.OneToOne
 
 class OrientDbOneToOneSpec extends GormDatastoreSpec {

@@ -10,11 +10,11 @@ import com.tinkerpop.blueprints.impls.orient.OrientGraph
 import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
-import org.grails.datastore.gorm.orientdb.OrientDbDatastore
-import org.grails.datastore.gorm.orientdb.OrientDbMappingContext
-import org.grails.datastore.gorm.orientdb.OrientDbPersistentEntity
-import org.grails.datastore.gorm.orientdb.OrientDbSession
-import org.grails.datastore.gorm.orientdb.document.*
+import org.grails.datastore.gorm.orient.OrientDatastore
+import org.grails.datastore.gorm.orient.OrientMappingContext
+import org.grails.datastore.gorm.orient.OrientPersistentEntity
+import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.entity.graph.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
@@ -26,7 +26,7 @@ class Setup {
     static connectionDetails = [username: "admin", password: "admin", url: "memory:temp"]
     static OPartitionedDatabasePool poolFactory
     static ODatabase db
-    static OrientDbDatastore datastore
+    static OrientDatastore datastore
     static OrientDbSession session
 
     static destroy() {
@@ -44,15 +44,15 @@ class Setup {
         def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book, ChildEntity, Country, City, Location, Publication, PlantCategory, Plant]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
-        def mappingContext = new OrientDbMappingContext({})
-        datastore = new OrientDbDatastore(mappingContext, ctx, poolFactory)
+        def mappingContext = new OrientMappingContext({})
+        datastore = new OrientDatastore(mappingContext, ctx, poolFactory)
 
         for (Class cls in classes) {
             mappingContext.addPersistentEntity(cls)
         }
         OrientGraph graph = null
         mappingContext.getPersistentEntities().each { PersistentEntity e ->
-            def orientEntity = (OrientDbPersistentEntity) e
+            def orientEntity = (OrientPersistentEntity) e
             if (orientEntity.isVertex()) {
                 if (graph == null) {
                     graph = new OrientGraph((ODatabaseDocumentTx)db)

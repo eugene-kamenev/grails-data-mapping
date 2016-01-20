@@ -1,9 +1,9 @@
 package grails.gorm.tests.orientdb.document
 
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.document.PlantCategory
-import org.grails.datastore.gorm.orientdb.document.Publication
-import org.grails.datastore.gorm.orientdb.extensions.OrientDbGormHelper
+import org.grails.datastore.gorm.orient.entity.document.PlantCategory
+import org.grails.datastore.gorm.orient.entity.document.Publication
+import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
 import spock.lang.Ignore
 
 /**
@@ -783,7 +783,7 @@ class OrientDbNamedQuerySpec extends GormDatastoreSpec {
         session.clear()
 
         when:
-        def publication = Publication.recentPublications.get(OrientDbGormHelper.createRecordId('#-1:-1'))
+        def publication = Publication.recentPublications.get(OrientGormHelper.createRecordId('#-1:-1'))
 
         then:
         publication == null

@@ -3,7 +3,7 @@ package grails.gorm.tests.orientdb.document
 import grails.gorm.DetachedCriteria
 import grails.gorm.PagedResultList
 import grails.gorm.tests.GormDatastoreSpec
-import org.grails.datastore.gorm.orientdb.document.Person
+import org.grails.datastore.gorm.orient.entity.document.Person
 import spock.lang.IgnoreIf
 
 class OrientDbDetachedCriteriaSpec extends GormDatastoreSpec {

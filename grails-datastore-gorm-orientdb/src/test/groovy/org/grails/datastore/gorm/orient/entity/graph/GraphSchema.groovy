@@ -156,6 +156,7 @@ class TestEntity implements Serializable {
 }
 
 @Entity
+
 class ChildEntity implements Serializable {
     static mapWith = 'orient'
 
@@ -220,6 +221,7 @@ class Highway implements Serializable {
         name index:true
     }
 }
+
 
 @Entity
 class Book implements Serializable {

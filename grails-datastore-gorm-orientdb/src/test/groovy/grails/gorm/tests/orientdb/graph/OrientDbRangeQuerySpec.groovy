@@ -2,10 +2,10 @@ package grails.gorm.tests.orientdb.graph
 
 import grails.gorm.tests.GormDatastoreSpec
 import groovy.time.TimeCategory
-import org.grails.datastore.gorm.orientdb.graph.ChildEntity
-import org.grails.datastore.gorm.orientdb.graph.Person
-import org.grails.datastore.gorm.orientdb.graph.Publication
-import org.grails.datastore.gorm.orientdb.graph.TestEntity
+import org.grails.datastore.gorm.orient.entity.graph.ChildEntity
+import org.grails.datastore.gorm.orient.entity.graph.Person
+import org.grails.datastore.gorm.orient.entity.graph.Publication
+import org.grails.datastore.gorm.orient.entity.graph.TestEntity
 
 /**
  * Abstract base test for querying ranges. Subclasses should do the necessary setup to configure GORM
