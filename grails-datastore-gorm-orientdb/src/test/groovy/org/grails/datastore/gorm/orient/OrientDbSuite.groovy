@@ -1,12 +1,12 @@
 package org.grails.datastore.gorm.orient
 
-import grails.gorm.tests.orientdb.document.*
+import grails.gorm.tests.orientdb.custom.OrientMixedRelationshipsSpec
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 
 @RunWith(Suite)
 @Suite.SuiteClasses([
-        OrientDbCriteriaBuilderSpec,
+        /*OrientDbCriteriaBuilderSpec,
         OrientDbCrudOperationsSpec,
         OrientDbDeleteAllSpec,
         OrientDbDetachedCriteriaSpec,
@@ -24,7 +24,8 @@ import org.junit.runners.Suite
         OrientDbRangeQuerySpec,
         OrientDbSaveAllSpec,
         OrientDbSizeQuerySpec,
-        OrientDbWithTransactionSpec
+        OrientDbWithTransactionSpec*/
+OrientMixedRelationshipsSpec
 ])
 class OrientDbSuite {
 }

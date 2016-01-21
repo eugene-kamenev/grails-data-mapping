@@ -14,6 +14,7 @@ import org.grails.datastore.gorm.orient.OrientDatastore
 import org.grails.datastore.gorm.orient.OrientMappingContext
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.entity.custom.LivesIn
 import org.grails.datastore.gorm.orient.entity.document.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
@@ -42,6 +43,8 @@ class Setup {
         poolFactory.autoCreate = true
         db = poolFactory.acquire()
         def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book, ChildEntity, Country, City, Location, Publication, PlantCategory, Plant]
+
+        classes = [org.grails.datastore.gorm.orient.entity.custom.Person, org.grails.datastore.gorm.orient.entity.custom.City, org.grails.datastore.gorm.orient.entity.custom.Country, LivesIn]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         def mappingContext = new OrientMappingContext({})
@@ -53,19 +56,18 @@ class Setup {
         OrientGraph graph = null
         mappingContext.getPersistentEntities().each { PersistentEntity e ->
             def orientEntity = (OrientPersistentEntity) e
-            if (orientEntity.isVertex()) {
+            if (orientEntity.isVertex() || orientEntity.isEdge()) {
                 if (graph == null) {
                     graph = new OrientGraph((ODatabaseDocumentTx)db)
                 }
-                graph.executeOutsideTx(new OCallable<Object, OrientBaseGraph>() {
-                    public Object call(OrientBaseGraph iArgument) {
-                        graph.createVertexType(orientEntity.className).setClusterSelection("default");
-                        return null;
-                    }
-                });
-
+                createVertexOrEdge(graph, orientEntity)
             } else {
-                db.command(new OCommandSQL("CREATE CLASS $orientEntity.className")).execute()
+                if (graph == null) {
+                    db.command(new OCommandSQL("CREATE CLASS $orientEntity.className")).execute()
+                } else {
+                    createVertexOrEdge(graph, orientEntity)
+                }
+
             }
         }
         if (graph != null) {
@@ -88,6 +90,19 @@ class Setup {
         session = datastore.connect()
         session.beginTransaction()
         return session
+    }
+
+    static createVertexOrEdge(OrientGraph graph, OrientPersistentEntity orientEntity) {
+        graph.executeOutsideTx(new OCallable<Object, OrientBaseGraph>() {
+            public Object call(OrientBaseGraph iArgument) {
+                if (orientEntity.edge) {
+                    graph.createEdgeType(orientEntity.className).setClusterSelection('default');
+                    return null
+                }
+                graph.createVertexType(orientEntity.className).setClusterSelection('default');
+                null
+            }
+        });
     }
 
 }

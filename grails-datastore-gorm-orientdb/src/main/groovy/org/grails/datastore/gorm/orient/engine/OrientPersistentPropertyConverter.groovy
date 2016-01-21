@@ -4,9 +4,11 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.id.ORecordId
 import com.orientechnologies.orient.core.metadata.schema.OType
 import com.orientechnologies.orient.core.record.impl.ODocument
+import com.tinkerpop.blueprints.impls.orient.OrientEdge
 import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.collection.OrientPersistentSet
 import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.collection.PersistentList
@@ -119,47 +121,7 @@ class OrientPersistentPropertyConverter {
         void marshall(OIdentifiable nativeEntry, Association property, EntityAccess entityAccess, OrientDbSession session) {
             boolean shouldEncodeIds = !property.isBidirectional() || (property instanceof ManyToMany)
             println "should encode ids calculated in OneToMany $shouldEncodeIds"
-            /*if(shouldEncodeIds) {
-                // if it is unidirectional we encode the values inside the current
-                // document, otherwise nothing to do, encoding foreign key stored in inverse side
 
-                def associatedEntity = property.associatedEntity
-                def mongoSession = (AbstractMongoSession)datastore.currentSession
-                if(value instanceof Collection) {
-                    boolean updateCollection = false
-                    if((value instanceof DirtyCheckableCollection)) {
-                        def persistentCollection = (DirtyCheckableCollection) value
-                        updateCollection = persistentCollection.hasChanged()
-                    }
-                    else {
-                        // write new collection
-                        updateCollection = true
-                    }
-
-                    if(updateCollection) {
-                        // update existing collection
-                        Collection identifiers = (Collection)mongoSession.getAttribute(parentAccess.entity, "${property}.ids")
-                        if(identifiers == null) {
-                            def fastClassData = FieldEntityAccess.getOrIntializeReflector(associatedEntity)
-                            identifiers = ((Collection)value).collect() {
-                                fastClassData.getIdentifier(it)
-                            }
-                        }
-                        writer.writeName MappingUtils.getTargetKey((PersistentProperty)property)
-                        def listCodec = datastore.codecRegistry.get(List)
-
-                        def identifierList = identifiers.toList()
-                        MongoAttribute attr = (MongoAttribute)property.mapping.mappedForm
-                        if(attr?.isReference()) {
-                            def collectionName = mongoSession.getCollectionName(property.associatedEntity)
-                            identifierList = identifierList.findAll(){ it != null }.collect {
-                                new DBRef(collectionName, it)
-                            }
-                        }
-                        listCodec.encode writer, identifierList, encoderContext
-                    }
-                }
-            }*/
         }
 
         @Override
@@ -222,6 +184,12 @@ class OrientPersistentPropertyConverter {
                     if (!property.isForeignKeyInChild()) {
                         if (!child) {
                             child = session.getPersister(associatedEntity).persist(value)
+                        }
+                        if (!property.isForeignKeyInChild() && !property.owningSide && ((OrientAttribute) property.mapping.mappedForm).edge != null) {
+                            def edgePersister = session.getPersister(((OrientAttribute) property.mapping.mappedForm).edge)
+                            def edgeEntity = session.mappingContext.getPersistentEntity(((OrientAttribute) property.mapping.mappedForm).edge.name)
+                            def edge = createEdge(session, (OrientPersistentEntity) edgeEntity, (OIdentifiable) parent, (OIdentifiable) child)
+                            println "should save like an edge"
                         }
                         setValue((OIdentifiable) parent, property, child)
                         // adding to referenced side collection
@@ -326,7 +294,12 @@ class OrientPersistentPropertyConverter {
             entry.setProperty(nativeName, value, valueType)
         }
     }
-    
+
+    static OrientEdge createEdge(OrientDbSession session, OrientPersistentEntity edgeEntity, OIdentifiable vertexFrom, OIdentifiable vertexTo) {
+        def graph = session.graph
+        return graph.addEdge("class:$edgeEntity.className", graph.getVertex(vertexFrom.identity), graph.getVertex(vertexTo.identity), edgeEntity.className)
+    }
+
     static Object getValue(OIdentifiable entry, PersistentProperty property) {
         def nativeName = MappingUtils.getTargetKey(property)
         if (entry instanceof ODocument) {

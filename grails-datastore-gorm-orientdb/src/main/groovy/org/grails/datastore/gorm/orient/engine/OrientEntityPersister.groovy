@@ -91,7 +91,7 @@ class OrientEntityPersister extends EntityPersister {
         def entityId = OrientGormHelper.createRecordId(entityAccess.getIdentifier())
         if (entityId == null) {
             entityId = OrientGormHelper.createNewOrientEntry(orientEntity, obj, orientDbSession())
-            // we need to save it right now, it attaches to ODocumentTx
+            // we need to save it right now, it should be attached to ODocumentTx
             OrientGormHelper.saveEntry(entityId)
             entityAccess.setIdentifierNoConversion(entityId.identity)
         }

@@ -10,6 +10,7 @@ class OrientAttribute extends Attribute {
     String field
     OType type
     OClass.INDEX_TYPE index
+    Class edge
 
     void setField(String field) {
         setTargetName(field)
