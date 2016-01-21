@@ -22,7 +22,7 @@ import javax.persistence.CascadeType
 import javax.persistence.FetchType
 
 @CompileStatic
-class PersistentPropertyConverter {
+class OrientPersistentPropertyConverter {
     private static final Map<Class, ?> PROPERTY_CONVERTERS = [
             (Identity): new IdentityConverter(),
             (Simple): new SimpleConverter(),
@@ -216,15 +216,14 @@ class PersistentPropertyConverter {
             if (value) {
                 def associatedEntity = property.associatedEntity
                 def associationAccess = session.createEntityAccess(associatedEntity, value)
+                def parent = ((OIdentifiable) entityAccess.identifier)?.record?.load()
+                def child = ((OIdentifiable) associationAccess.identifier)?.record?.load()
                 if (property.doesCascade(CascadeType.PERSIST) && associatedEntity != null) {
                     if (!property.isForeignKeyInChild()) {
-
-                        def nativeAssociation = value['dbInstance']
-                        if (!nativeAssociation) {
-                            println "nativeAssociation was null $value"
-                            nativeAssociation = session.getPersister(associatedEntity).persist(value)
+                        if (!child) {
+                            child = session.getPersister(associatedEntity).persist(value)
                         }
-                        setValue((OIdentifiable) entityAccess.entity['dbInstance'], property, nativeAssociation)
+                        setValue((OIdentifiable) parent, property, child)
                         // adding to referenced side collection
                         if (property.referencedPropertyName != null) {
                             def valueFromAssociated = associationAccess.getProperty(property.referencedPropertyName)

@@ -14,7 +14,7 @@ import org.grails.datastore.gorm.orient.OrientDatastore
 import org.grails.datastore.gorm.orient.OrientMappingContext
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientDbSession
-import org.grails.datastore.gorm.orient.entity.graph.*
+import org.grails.datastore.gorm.orient.entity.document.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity

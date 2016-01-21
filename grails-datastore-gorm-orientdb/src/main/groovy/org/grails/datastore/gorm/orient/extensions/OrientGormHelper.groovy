@@ -51,7 +51,7 @@ abstract class OrientGormHelper {
         def valueToSet = value
         OType orientType
         if (valueToSet instanceof OIdentifiable) {
-            valueToSet = valueToSet.record
+            valueToSet = ((OIdentifiable)valueToSet).record
             orientType = OType.LINK
         }
         if (valueToSet instanceof Iterable) {
@@ -97,11 +97,9 @@ abstract class OrientGormHelper {
         OIdentifiable nativeEntry = null
         if (entity.document) {
             nativeEntry = new ODocument(entity.className)
-            object['dbInstance'] = nativeEntry
         }
         if (entity.vertex) {
             nativeEntry = session.graph.addTemporaryVertex(entity.className)
-            object['dbInstance'] = nativeEntry
         }
         return nativeEntry
     }
@@ -112,7 +110,7 @@ abstract class OrientGormHelper {
 
     static String getOrientClassName(OIdentifiable oIdentifiable) {
         if (oIdentifiable instanceof ODocument) return oIdentifiable.className;
-        if (oIdentifiable instanceof OrientElement) return oIdentifiable.record.className;
+        if (oIdentifiable instanceof OrientElement) return ((ODocument) oIdentifiable.record).className;
         return null
     }
 

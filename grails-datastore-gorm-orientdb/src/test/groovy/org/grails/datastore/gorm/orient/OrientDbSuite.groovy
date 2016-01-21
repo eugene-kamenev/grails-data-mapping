@@ -1,6 +1,6 @@
 package org.grails.datastore.gorm.orient
 
-import grails.gorm.tests.orientdb.graph.*
+import grails.gorm.tests.orientdb.document.*
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 
