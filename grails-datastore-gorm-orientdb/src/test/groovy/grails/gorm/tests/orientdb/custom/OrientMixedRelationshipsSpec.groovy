@@ -8,11 +8,21 @@ class OrientMixedRelationshipsSpec extends GormDatastoreSpec {
 
     def "test that entity relationship is saved with edge"() {
         given:
-        def p
+
+        def c = new Country(name: 'England')
+        def p = new Person(livesIn: c).save(flush: true)
+
+        session.clear()
+
         when:
-        p = new Person(livesIn: new Country()).save(flush: true).id
+            p = Person.get(p.id)
         then:
-        p != null
+            p != null
+        and:
+            p.country != null
+            p.country.name == 'England'
+
+
     }
 
     def "test that entity relationship saved from inverse side" () {

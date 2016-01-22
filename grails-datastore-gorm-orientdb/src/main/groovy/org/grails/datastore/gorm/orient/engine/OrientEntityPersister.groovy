@@ -8,20 +8,18 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.grails.datastore.gorm.orient.OrientDbSession
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
-import org.grails.datastore.gorm.orient.collection.OrientLinkedSet
-import org.grails.datastore.gorm.orient.collection.OrientPersistentSet
 import org.grails.datastore.gorm.orient.collection.OrientResultList
 import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
 import org.grails.datastore.mapping.core.Session
-import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.engine.EntityPersister
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
-import org.grails.datastore.mapping.model.types.*
+import org.grails.datastore.mapping.model.types.Identity
 import org.grails.datastore.mapping.proxy.ProxyFactory
 import org.grails.datastore.mapping.query.Query
 import org.springframework.context.ApplicationEventPublisher
+
 /**
  * OrientDB entity persister implementation
  */
@@ -134,69 +132,21 @@ class OrientEntityPersister extends EntityPersister {
     OIdentifiable marshallEntity(OrientPersistentEntity entity, EntityAccess entityAccess) {
         OIdentifiable nativeObject = ((OIdentifiable) entityAccess.identifier).record
         for (property in entity.getPersistentProperties()) {
-            if (property instanceof Simple) {
-                OrientPersistentPropertyConverter.get(Simple).marshall(nativeObject, property, entityAccess, null)
-            }
-        }
-        for (association in entity.associations) {
-            def propertyValue = entityAccess.getProperty(association.name)
-            if (propertyValue != null) {
-                def associatedEntity = association.getAssociatedEntity()
-                def associationAccess = orientDbSession().createEntityAccess(associatedEntity, propertyValue)
-                if (association instanceof ToOne) {
-                    OrientPersistentPropertyConverter.get(ToOne).marshall(nativeObject, (ToOne) association, entityAccess, orientDbSession())
-                } else if (association instanceof OneToMany) {
-                    handleOneToManyMarshall((OneToMany) association, entityAccess, associationAccess)
-                }
-            }
+            OrientPersistentPropertyConverter.getForPersistentProperty(property).marshall(nativeObject, property, entityAccess, orientDbSession())
         }
         nativeObject
     }
 
-    void handleOneToManyMarshall(OneToMany association, EntityAccess entityAccess, EntityAccess associationAccess) {
-        if (!association.owningSide && association.referencedPropertyName == null) {
-            def list = session.persist((Iterable) associationAccess.getEntity())
-            OrientGormHelper.setValue((OrientPersistentEntity) entityAccess.persistentEntity, association, ((OIdentifiable) entityAccess.identifier).record.load(), list)
-            return
-        }
-        if (!association.owningSide && association.referencedPropertyName != null) {
-            session.persist((Iterable) associationAccess.getEntity())
-        }
-    }
-
-    void handleOneToManyUnmarshall(OneToMany association, EntityAccess entityAccess) {
-        def entity = entityAccess.entity
-        if (!association.owningSide && association.referencedPropertyName == null) {
-            entityAccess.setProperty(association.name, new OrientLinkedSet(entityAccess, orientDbSession(), association, (OIdentifiable) entityAccess.identifier))
-            return;
-        }
-        if (!association.owningSide && association.referencedPropertyName != null) {
-            def queryExecutor = (AssociationQueryExecutor) new OrientAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, association, session)
-            def associationSet = new OrientPersistentSet((Serializable) entityAccess.identifier, orientDbSession(), queryExecutor)
-            entityAccess.setPropertyNoConversion(association.name, associationSet)
-        }
-    }
-
     Object unmarshallEntity(OrientPersistentEntity entity, OIdentifiable nativeEntry) {
-        def orientEntity = (OrientPersistentEntity) entity
         if (nativeEntry == null) return nativeEntry;
         if (OrientGormHelper.getOrientClassName(nativeEntry) != null) {
             EntityAccess entityAccess = createEntityAccess(entity, entity.newInstance());
-            OrientPersistentPropertyConverter.get(Identity).unmarshall(nativeEntry, entity.identity, entityAccess, orientDbSession())
+            OrientPersistentPropertyConverter.getBasic(Identity).unmarshall(nativeEntry, entity.identity, entityAccess, orientDbSession())
             orientDbSession().cacheEntry(entity, nativeEntry.identity, entityAccess.entity)
             final Object instance = entityAccess.getEntity();
-            entityAccess.setIdentifierNoConversion( nativeEntry.identity)
+            entityAccess.setIdentifierNoConversion(nativeEntry.identity)
             for (property in entityAccess.persistentEntity.getPersistentProperties()) {
-                if (property instanceof Simple) {
-                    OrientPersistentPropertyConverter.get(Simple).unmarshall(nativeEntry, property, entityAccess, orientDbSession())
-                } else if (property instanceof Association) {
-                    if (property instanceof ToOne) {
-                        OrientPersistentPropertyConverter.get(ToOne).unmarshall(nativeEntry, (ToOne) property, entityAccess, orientDbSession())
-                    }
-                    if (property instanceof OneToMany) {
-                        handleOneToManyUnmarshall((OneToMany) property, entityAccess)
-                    }
-                }
+                OrientPersistentPropertyConverter.getForPersistentProperty(property).unmarshall(nativeEntry, property, entityAccess, orientDbSession())
             }
             firePostLoadEvent(entityAccess.getPersistentEntity(), entityAccess);
             return instance

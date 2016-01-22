@@ -9,12 +9,15 @@ import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.OrientDbSession
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
+import org.grails.datastore.gorm.orient.collection.OrientLinkedSet
 import org.grails.datastore.gorm.orient.collection.OrientPersistentSet
+import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
 import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.collection.PersistentList
 import org.grails.datastore.mapping.collection.PersistentSet
 import org.grails.datastore.mapping.collection.PersistentSortedSet
 import org.grails.datastore.mapping.core.Session
+import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.engine.internal.MappingUtils
 import org.grails.datastore.mapping.model.PersistentProperty
@@ -23,20 +26,111 @@ import org.grails.datastore.mapping.model.types.*
 import javax.persistence.CascadeType
 import javax.persistence.FetchType
 
+/**
+ * Main class that represents different marshall/unmarshall methods for associations and basic properties
+ */
 @CompileStatic
-class OrientPersistentPropertyConverter {
-    private static final Map<Class, ?> PROPERTY_CONVERTERS = [
-            (Identity): new IdentityConverter(),
-            (Simple): new SimpleConverter(),
-            (Custom): new CustomTypeConverter(),
-            (OneToMany) : new OneToManyConverter(),
-            (ToOne) : new ToOneConverter(),
-            (Embedded) : new EmbeddedConverter(),
-            (EmbeddedCollection) : new EmbeddedCollectionConverter()
+abstract class OrientPersistentPropertyConverter {
+
+    private static final List<OType> linkedTypes = [OType.LINK, OType.LINKSET, OType.LINKLIST]
+
+    private static final Map<Class, ?> BASIC_PROPERTY_CONVERTERS = [
+            (Identity)          : new IdentityConverter(),
+            (Simple)            : new SimpleConverter(),
+            (Custom)            : new CustomTypeConverter(),
+            (OneToMany)         : new OneToManyConverter(),
+            (ManyToOne)         : new ToOneConverter(),
+            (ManyToMany)        : null,
+            (OneToOne)          : new ToOneConverter(),
+            (Embedded)          : new EmbeddedConverter(),
+            (EmbeddedCollection): new EmbeddedCollectionConverter(),
+
     ]
 
-    static PropertyConverter get(Class propertyClass) {
-        return (PropertyConverter) PROPERTY_CONVERTERS[propertyClass]
+    private static final Map<Class, ?> LINK_ASSOCIATIONS_CONVERTERS = [
+            (OneToMany) : new LinkedOneToManyConverter(),
+            (ManyToMany): new LinkedManyToManyConverter(),
+            (ManyToOne) : new LinkedManyToOneConverter(),
+            (OneToOne)  : new LinkedOneToOneConverter()
+    ]
+
+    private static final Map<Class, ?> EDGE_ASSOCIATIONS_CONVERTERS = [
+            (OneToMany) : new EdgeOneToManyConverter(),
+            (ManyToMany): new EdgeManyToManyConverter(),
+            (ManyToOne) : new EdgeManyToOneConverter(),
+            (OneToOne)  : new EdgeOneToOneConverter()
+    ]
+
+    /**
+     * Get Property Converter by persistent property
+     *
+     * @param property
+     * @return
+     */
+    static PropertyConverter getForPersistentProperty(PersistentProperty property) {
+        if (property instanceof Identity) {
+            return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[Identity]
+        }
+        if (property instanceof Simple) {
+            return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[Simple]
+        }
+        if (property instanceof Custom) {
+            return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[Custom]
+        }
+        if (property instanceof Embedded) {
+            return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[Embedded]
+        }
+        if (property instanceof EmbeddedCollection) {
+            return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[EmbeddedCollection]
+        }
+        Class associationClass = null
+        switch (property) {
+            case OneToOne: associationClass = OneToOne; break;
+            case OneToMany: associationClass = OneToMany; break;
+            case ManyToOne: associationClass = ManyToOne; break;
+            case ManyToMany: associationClass = ManyToMany; break;
+        }
+        if (property instanceof Association) {
+            def mapping = (OrientAttribute) property.mapping.mappedForm
+            if (mapping.edge != null) {
+                return getForEdge(associationClass)
+            }
+            if (mapping.type in linkedTypes) {
+                return getLinked(associationClass)
+            }
+            return getBasic(associationClass)
+        }
+        return null
+    }
+
+    /**
+     * Get basic property converter
+     *
+     * @param associationClass
+     * @return
+     */
+    static PropertyConverter getBasic(Class associationClass) {
+        return (PropertyConverter) BASIC_PROPERTY_CONVERTERS[associationClass]
+    }
+
+    /**
+     * Get linked association converter
+     *
+     * @param associationClass
+     * @return
+     */
+    static PropertyConverter getLinked(Class associationClass) {
+        return (PropertyConverter) LINK_ASSOCIATIONS_CONVERTERS[associationClass]
+    }
+
+    /**
+     * Get edge handling converter
+     *
+     * @param associationClass
+     * @return
+     */
+    static PropertyConverter getForEdge(Class associationClass) {
+        return (PropertyConverter) EDGE_ASSOCIATIONS_CONVERTERS[associationClass]
     }
 
     /**
@@ -118,26 +212,32 @@ class OrientPersistentPropertyConverter {
     static class OneToManyConverter implements PropertyConverter<Association> {
 
         @Override
-        void marshall(OIdentifiable nativeEntry, Association property, EntityAccess entityAccess, OrientDbSession session) {
-            boolean shouldEncodeIds = !property.isBidirectional() || (property instanceof ManyToMany)
-            println "should encode ids calculated in OneToMany $shouldEncodeIds"
+        void marshall(OIdentifiable nativeEntry, Association association, EntityAccess entityAccess, OrientDbSession session) {
+            def value = session.mappingContext.proxyFactory.unwrap(entityAccess.getProperty(association.name))
+            def associatedEntity = association.getAssociatedEntity()
+            def associationAccess = session.createEntityAccess(associatedEntity, value)
+            if (!association.owningSide && association.referencedPropertyName == null) {
+                def list = session.persist((Iterable) associationAccess.getEntity())
+                OrientGormHelper.setValue((OrientPersistentEntity) entityAccess.persistentEntity, association, ((OIdentifiable) entityAccess.identifier).record.load(), list)
+                return
+            }
+            if (!association.owningSide && association.referencedPropertyName != null) {
+                session.persist((Iterable) associationAccess.getEntity())
+            }
 
         }
 
         @Override
-        void unmarshall(OIdentifiable nativeEntry, Association property, EntityAccess entityAccess, OrientDbSession session) {
-            if (property.isBidirectional() && !(property instanceof ManyToMany)) {
-                println "we need initialize persistent collection"
-                //initializePersistentCollection(session, entityAccess, property)
-            } else {
-                def type = property.type
-                def propertyName = property.name
-                def associatedType = property.associatedEntity.javaClass
-                if (Set.isAssignableFrom(associatedType)) {
-                    // return persistentSet
-                } else {
-                    // return persistentList
-                }
+        void unmarshall(OIdentifiable nativeEntry, Association association, EntityAccess entityAccess, OrientDbSession session) {
+            def entity = entityAccess.entity
+            if (!association.owningSide && association.referencedPropertyName == null) {
+                entityAccess.setProperty(association.name, new OrientLinkedSet(entityAccess, session, association, (OIdentifiable) entityAccess.identifier))
+                return;
+            }
+            if (!association.owningSide && association.referencedPropertyName != null) {
+                def queryExecutor = (AssociationQueryExecutor) new OrientAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, association, session)
+                def associationSet = new OrientPersistentSet((Serializable) entityAccess.identifier, session, queryExecutor)
+                entityAccess.setPropertyNoConversion(association.name, associationSet)
             }
         }
 
@@ -146,22 +246,20 @@ class OrientPersistentPropertyConverter {
             def propertyName = property.name
             def identifier = (Serializable) entityAccess.identifier
 
-            if(SortedSet.isAssignableFrom(type)) {
+            if (SortedSet.isAssignableFrom(type)) {
                 entityAccess.setPropertyNoConversion(
                         propertyName,
-                        new PersistentSortedSet( property, identifier, session)
+                        new PersistentSortedSet(property, identifier, session)
                 )
-            }
-            else if(Set.isAssignableFrom(type)) {
+            } else if (Set.isAssignableFrom(type)) {
                 entityAccess.setPropertyNoConversion(
                         propertyName,
-                        new PersistentSet( property, identifier, session)
+                        new PersistentSet(property, identifier, session)
                 )
-            }
-            else {
+            } else {
                 entityAccess.setPropertyNoConversion(
                         propertyName,
-                        new PersistentList( property, identifier, session)
+                        new PersistentList(property, identifier, session)
                 )
             }
         }
@@ -188,8 +286,8 @@ class OrientPersistentPropertyConverter {
                         if (!property.isForeignKeyInChild() && !property.owningSide && ((OrientAttribute) property.mapping.mappedForm).edge != null) {
                             def edgePersister = session.getPersister(((OrientAttribute) property.mapping.mappedForm).edge)
                             def edgeEntity = session.mappingContext.getPersistentEntity(((OrientAttribute) property.mapping.mappedForm).edge.name)
-                            def edge = createEdge(session, (OrientPersistentEntity) edgeEntity, (OIdentifiable) parent, (OIdentifiable) child)
-                            println "should save like an edge"
+                            createEdge(session, (OrientPersistentEntity) edgeEntity, (OIdentifiable) parent, (OIdentifiable) child)
+                            return;
                         }
                         setValue((OIdentifiable) parent, property, child)
                         // adding to referenced side collection
@@ -211,10 +309,10 @@ class OrientPersistentPropertyConverter {
             def orientAttribute = (OrientAttribute) property.mapping.mappedForm
             boolean isLazy = isLazyAssociation(orientAttribute)
             def associatedEntity = property.associatedEntity
-            if(associatedEntity == null) {
+            if (associatedEntity == null) {
                 return;
             }
-            if(isLazy) {
+            if (isLazy) {
                 if (property.owningSide && property.foreignKeyInChild) {
                     def queryExecutor = new OrientAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, property, session)
                     def result = new OrientPersistentSet((Serializable) entityAccess.identifier, session, queryExecutor)
@@ -223,12 +321,11 @@ class OrientPersistentPropertyConverter {
                 }
                 def value = getValue(nativeEntry, property)
                 if (value != null) {
-                    def proxy = session.mappingContext.proxyFactory.createProxy((Session) session, associatedEntity.javaClass, ((OIdentifiable)value).identity)
+                    def proxy = session.mappingContext.proxyFactory.createProxy((Session) session, associatedEntity.javaClass, ((OIdentifiable) value).identity)
                     entityAccess.setProperty(property.name, proxy)
                 }
-            }
-            else {
-                new UnsupportedOperationException("seems that relation should be egerly fetched, not supported")
+            } else {
+                throw new UnsupportedOperationException("seems that relation should be egerly fetched, not supported")
             }
         }
 
@@ -272,7 +369,7 @@ class OrientPersistentPropertyConverter {
             throw new IllegalAccessException("Not yet implemented in GORM for OrientDB")
         }
     }
-    
+
     static void setValue(OIdentifiable entry, PersistentProperty property, Object value, OType valueType = null) {
         def nativeName = MappingUtils.getTargetKey(property)
         if (entry instanceof ODocument) {
@@ -310,13 +407,111 @@ class OrientPersistentPropertyConverter {
         return null
     }
 
+    static class EdgeOneToOneConverter implements PropertyConverter<OneToOne> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, OneToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, OneToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class EdgeOneToManyConverter implements PropertyConverter<OneToMany> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class EdgeManyToManyConverter implements PropertyConverter<ManyToMany> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class EdgeManyToOneConverter implements PropertyConverter<ManyToOne> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class LinkedOneToOneConverter implements PropertyConverter<OneToOne> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, OneToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, OneToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class LinkedOneToManyConverter implements PropertyConverter<OneToMany> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class LinkedManyToManyConverter implements PropertyConverter<ManyToMany> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
+    static class LinkedManyToOneConverter implements PropertyConverter<ManyToOne> {
+        @Override
+        void marshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+
+        @Override
+        void unmarshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientDbSession session) {
+
+        }
+    }
+
     static interface PropertyConverter<T extends PersistentProperty> {
         void marshall(OIdentifiable nativeEntry, T property, EntityAccess entityAccess, OrientDbSession session)
+
         void unmarshall(OIdentifiable nativeEntry, T property, EntityAccess entityAccess, OrientDbSession session)
     }
 
     static interface SimpleTypeConverter {
         void marshall(OIdentifiable oIdentifiable, Simple property, EntityAccess entityAccess)
+
         void unmarshall(OIdentifiable oIdentifiable, Simple property, EntityAccess entityAccess)
     }
 }

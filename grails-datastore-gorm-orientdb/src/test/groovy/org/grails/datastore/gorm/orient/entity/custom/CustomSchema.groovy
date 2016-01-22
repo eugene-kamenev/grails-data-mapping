@@ -6,7 +6,11 @@ import grails.persistence.Entity
 @Entity
 class Person {
     ORecordId id
+
     Country livesIn
+
+    String firstName
+    String lastName
 
     static belongsTo = [Country]
 

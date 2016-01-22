@@ -11,11 +11,10 @@ import grails.core.DefaultGrailsApplication
 import org.grails.datastore.gorm.events.AutoTimestampEventListener
 import org.grails.datastore.gorm.events.DomainEventListener
 import org.grails.datastore.gorm.orient.OrientDatastore
+import org.grails.datastore.gorm.orient.OrientDbSession
 import org.grails.datastore.gorm.orient.OrientMappingContext
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
-import org.grails.datastore.gorm.orient.OrientDbSession
-import org.grails.datastore.gorm.orient.entity.custom.LivesIn
-import org.grails.datastore.gorm.orient.entity.document.*
+import org.grails.datastore.gorm.orient.entity.graph.*
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
@@ -44,7 +43,7 @@ class Setup {
         db = poolFactory.acquire()
         def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book, ChildEntity, Country, City, Location, Publication, PlantCategory, Plant]
 
-        classes = [org.grails.datastore.gorm.orient.entity.custom.Person, org.grails.datastore.gorm.orient.entity.custom.City, org.grails.datastore.gorm.orient.entity.custom.Country, LivesIn]
+       // classes = [org.grails.datastore.gorm.orient.entity.custom.Person, org.grails.datastore.gorm.orient.entity.custom.City, org.grails.datastore.gorm.orient.entity.custom.Country, LivesIn]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         def mappingContext = new OrientMappingContext({})
