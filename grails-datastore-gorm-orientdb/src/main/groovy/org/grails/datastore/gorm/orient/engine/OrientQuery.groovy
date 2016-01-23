@@ -5,7 +5,7 @@ import com.orientechnologies.orient.core.sql.query.OResultSet
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
-import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.gorm.orient.collection.OrientResultList
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.model.PersistentEntity
@@ -76,8 +76,8 @@ class OrientQuery extends org.grails.datastore.mapping.query.Query implements Qu
         return firstResult
     }
 
-    OrientDbSession getSession() {
-        (OrientDbSession) super.getSession()
+    OrientSession getSession() {
+        (OrientSession) super.getSession()
     }
 
     @Override

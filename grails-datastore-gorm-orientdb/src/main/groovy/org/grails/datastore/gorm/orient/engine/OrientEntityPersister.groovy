@@ -6,8 +6,8 @@ import com.orientechnologies.orient.core.record.ORecord
 import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.grails.datastore.gorm.orient.OrientDbSession
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
+import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.gorm.orient.collection.OrientResultList
 import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
 import org.grails.datastore.mapping.core.Session
@@ -19,7 +19,6 @@ import org.grails.datastore.mapping.model.types.Identity
 import org.grails.datastore.mapping.proxy.ProxyFactory
 import org.grails.datastore.mapping.query.Query
 import org.springframework.context.ApplicationEventPublisher
-
 /**
  * OrientDB entity persister implementation
  */
@@ -86,7 +85,10 @@ class OrientEntityPersister extends EntityPersister {
         ProxyFactory proxyFactory = getProxyFactory();
         obj = proxyFactory.unwrap(obj);
         def entityAccess = orientDbSession().createEntityAccess(pe, obj)
-        def entityId = OrientGormHelper.createRecordId(entityAccess.getIdentifier())
+        if (orientEntity.edge) {
+            persistEdge(orientEntity, entityAccess)
+        }
+        def entityId = OrientGormHelper.createRecordId(entityAccess.identifier)
         if (entityId == null) {
             entityId = OrientGormHelper.createNewOrientEntry(orientEntity, obj, orientDbSession())
             // we need to save it right now, it should be attached to ODocumentTx
@@ -95,6 +97,22 @@ class OrientEntityPersister extends EntityPersister {
         }
         OrientGormHelper.saveEntry(marshallEntity(orientEntity, entityAccess))
         entityId.record
+    }
+
+    /**
+     * Handling edge persist
+     *
+     * @param pe
+     * @param object
+     * @return
+     */
+    protected void persistEdge(OrientPersistentEntity pe, EntityAccess entityAccess) {
+        def inAssociation = session.persist(entityAccess.getProperty('in'))
+        def outAssociation = session.persist(entityAccess.getProperty('out'))
+        def inVertex = orientDbSession().graph.getVertex(((OIdentifiable) inAssociation).identity)
+        def outVertex = orientDbSession().graph.getVertex(((OIdentifiable) outAssociation).identity)
+        def edge = orientDbSession().graph.addEdge("class:$pe.className", outVertex, inVertex, pe.className)
+        entityAccess.setIdentifierNoConversion(edge.identity)
     }
 
     @Override
@@ -120,8 +138,8 @@ class OrientEntityPersister extends EntityPersister {
         return null
     }
 
-    OrientDbSession orientDbSession() {
-        (OrientDbSession) session
+    OrientSession orientDbSession() {
+        (OrientSession) session
     }
 
     @Override
@@ -132,6 +150,7 @@ class OrientEntityPersister extends EntityPersister {
     OIdentifiable marshallEntity(OrientPersistentEntity entity, EntityAccess entityAccess) {
         OIdentifiable nativeObject = ((OIdentifiable) entityAccess.identifier).record
         for (property in entity.getPersistentProperties()) {
+            if (property.name == 'in' || property.name == 'out' && entity.edge) continue;
             OrientPersistentPropertyConverter.getForPersistentProperty(property).marshall(nativeObject, property, entityAccess, orientDbSession())
         }
         nativeObject

@@ -23,6 +23,8 @@ class OrientAssociationQueryExecutor implements AssociationQueryExecutor<OIdenti
         this.session = session
     }
 
+
+
     @Override
     List<Object> query(OIdentifiable primaryKey) {
         if (!association.isBidirectional()) {

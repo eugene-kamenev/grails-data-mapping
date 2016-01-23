@@ -28,8 +28,12 @@ class Country {
     Set<Person> residents
     Set<City> cities
 
-    static hasMany = [citizens: Person, cities: City]
+    static hasMany = [residents: Person, cities: City]
 
+    static mapping = {
+        orient type: 'vertex'
+        residents edge: LivesIn
+    }
 }
 
 @Entity
@@ -39,13 +43,36 @@ class City {
 }
 
 @Entity
-class LivesIn {
-    ORecordId id
+class LivesIn extends OrientEdge<Person, Country> {
     Date since
-
-    static belongsTo = [Person, Country]
 
     static mapping = {
         orient type: 'edge'
+    }
+}
+
+@Entity
+class OrientEdge<T, E> {
+    ORecordId id
+
+    private T inVertex
+    private E outVertex
+
+    static belongsTo = [T, E]
+
+    void setIn(T instance) {
+        inVertex = instance
+    }
+
+    T getIn() {
+        inVertex
+    }
+
+    E getOut() {
+        outVertex
+    }
+
+    void setOut(E instance) {
+        this.outVertex = instance
     }
 }

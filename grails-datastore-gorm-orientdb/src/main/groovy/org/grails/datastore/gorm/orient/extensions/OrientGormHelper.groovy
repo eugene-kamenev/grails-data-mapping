@@ -9,7 +9,7 @@ import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FromString
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
-import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.mapping.model.PersistentProperty
 import org.grails.datastore.mapping.model.types.OneToMany
 
@@ -93,7 +93,7 @@ abstract class OrientGormHelper {
         return null
     }
 
-    static OIdentifiable createNewOrientEntry(OrientPersistentEntity entity, Object object, OrientDbSession session) {
+    static OIdentifiable createNewOrientEntry(OrientPersistentEntity entity, Object object, OrientSession session) {
         OIdentifiable nativeEntry = null
         if (entity.document) {
             nativeEntry = new ODocument(entity.className)

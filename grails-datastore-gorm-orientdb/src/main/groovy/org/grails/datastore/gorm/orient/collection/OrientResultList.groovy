@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orient.collection
 
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.query.OResultSet
+import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.engine.OrientEntityPersister
 import org.grails.datastore.gorm.query.AbstractResultList
@@ -35,7 +36,9 @@ class OrientResultList extends AbstractResultList {
     @Override
     protected Object nextDecoded() {
         def next = cursor.next()
-
+        if (next instanceof OrientVertex) {
+            next = ((OrientVertex)next).record
+        }
         if (next instanceof ODocument) {
             def doc = (ODocument) next
             if (doc.className != null) {

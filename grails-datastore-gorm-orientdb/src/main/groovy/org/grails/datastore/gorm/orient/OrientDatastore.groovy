@@ -19,6 +19,7 @@ import org.springframework.core.env.PropertyResolver
  *
  * TODO: add dynamic username/password provider, as orientdb supports row-level security
  * TODO: add schema initialization possibility
+ *
  * @author @eugenekamenev
  */
 @CompileStatic
@@ -77,7 +78,7 @@ class OrientDatastore extends AbstractDatastore implements DisposableBean, State
 
     @Override
     protected Session createSession(PropertyResolver connectionDetails) {
-        new OrientDbSession(this, mappingContext, getApplicationEventPublisher(), false, this.orientPool.acquire())
+        new OrientSession(this, mappingContext, getApplicationEventPublisher(), false, this.orientPool.acquire())
     }
 
     @Override

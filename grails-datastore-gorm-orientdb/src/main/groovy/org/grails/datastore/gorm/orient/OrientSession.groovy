@@ -15,12 +15,12 @@ import org.springframework.context.ApplicationEventPublisher
  * Represents OrientDB GORM Session implementation
  */
 @CompileStatic
-class OrientDbSession extends AbstractSession<ODatabaseDocumentTx> {
+class OrientSession extends AbstractSession<ODatabaseDocumentTx> {
 
     protected ODatabaseDocumentTx currentDocumentConnection
     protected OrientGraph currentActiveGraph
 
-    OrientDbSession(OrientDatastore datastore, MappingContext mappingContext, ApplicationEventPublisher publisher, boolean stateless, ODatabaseDocumentTx connection) {
+    OrientSession(OrientDatastore datastore, MappingContext mappingContext, ApplicationEventPublisher publisher, boolean stateless, ODatabaseDocumentTx connection) {
         super(datastore, mappingContext, publisher, stateless)
         currentDocumentConnection = connection
     }

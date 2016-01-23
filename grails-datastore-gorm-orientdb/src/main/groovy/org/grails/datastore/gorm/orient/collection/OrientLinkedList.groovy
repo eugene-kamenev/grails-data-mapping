@@ -4,7 +4,7 @@ import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.record.impl.ODocument
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
-import org.grails.datastore.gorm.orient.OrientDbSession
+import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.gorm.orient.engine.OrientEntityPersister
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.model.types.Association
@@ -16,10 +16,10 @@ class OrientLinkedList implements List {
     private OIdentifiable nativeEntry
     private Association association
     private EntityAccess entityAccess
-    private OrientDbSession session
+    private OrientSession session
     private OrientPersistentEntity holder
 
-    OrientLinkedList(EntityAccess entityAccess, OrientDbSession session, Association association, OIdentifiable nativeEntry) {
+    OrientLinkedList(EntityAccess entityAccess, OrientSession session, Association association, OIdentifiable nativeEntry) {
         this.association = association
         this.nativeEntry = nativeEntry
         this.entityAccess = entityAccess

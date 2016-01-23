@@ -4,6 +4,11 @@ import grails.orient.OrientEntity
 import groovy.transform.CompileStatic
 import org.grails.compiler.gorm.GormEntityTraitProvider;
 
+/**
+ * OrientEntityTraitProvider implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientEntityTraitProvider implements GormEntityTraitProvider {
     final Class entityTrait = OrientEntity
