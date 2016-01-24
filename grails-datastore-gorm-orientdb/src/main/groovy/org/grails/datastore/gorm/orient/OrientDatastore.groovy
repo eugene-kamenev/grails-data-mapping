@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orient
 
 import com.orientechnologies.orient.core.db.OPartitionedDatabasePool
 import groovy.transform.CompileStatic
+import org.grails.datastore.gorm.orient.extensions.SchemaHelper
 import org.grails.datastore.mapping.core.AbstractDatastore
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.core.StatelessDatastore
@@ -34,43 +35,51 @@ class OrientDatastore extends AbstractDatastore implements DisposableBean, State
     static final String DEFAULT_ORIENTDB_URL = 'memory:test'
     static final String DEFAULT_ORIENTDB_USERNAME = 'admin'
     static final String DEFAULT_ORIENTDB_PASSWORD = 'admin'
-    static final String DEFAULT_ORIENTDB_MODE = 'memory'
     static final String DEFAULT_ORIENTDB_POOL_SIZE = 10
-    static final String DEFAULT_ORIENTDB_INITIALIZE_SCHEMA = 'none'
+    static final String DEFAULT_ORIENTDB_INITIALIZE_SCHEMA = 'create-drop'
 
     protected OPartitionedDatabasePool orientPool
 
     OrientDatastore(MappingContext mappingContext) {
         super(mappingContext)
         createDatabasePool()
+        initOrAlterSchema()
     }
 
     OrientDatastore(MappingContext mappingContext, Map<String, Object> connectionDetails, ConfigurableApplicationContext ctx) {
         super(mappingContext, connectionDetails, ctx)
         createDatabasePool(connectionDetails)
+        initOrAlterSchema()
     }
 
     OrientDatastore(MappingContext mappingContext, PropertyResolver connectionDetails, ConfigurableApplicationContext ctx) {
         super(mappingContext, connectionDetails, ctx)
-        createDatabasePool(getConnectionProperties(connectionDetails))
+        createDatabasePool(getConnectionProperties())
+        initOrAlterSchema()
     }
 
     OrientDatastore(MappingContext mappingContext, ConfigurableApplicationContext ctx, OPartitionedDatabasePool orientPool) {
         super(mappingContext, ctx.getEnvironment(), ctx)
         this.orientPool = orientPool
+        initOrAlterSchema()
     }
 
-    private Map getConnectionProperties(PropertyResolver propertyResolver) {
+    private void initOrAlterSchema() {
+        SchemaHelper.initDatabase(this.orientPool.acquire(), mappingContext.persistentEntities as List<OrientPersistentEntity>)
+    }
+
+    private Map getConnectionProperties() {
         [url: connectionDetails?.getProperty(KEY_ORIENTDB_URL) ?: DEFAULT_ORIENTDB_URL,
          userName: connectionDetails?.getProperty(KEY_ORIENTDB_USERNAME) ?: DEFAULT_ORIENTDB_USERNAME,
          password: connectionDetails?.getProperty(KEY_ORIENTDB_PASSWORD) ?: DEFAULT_ORIENTDB_PASSWORD,
-         size: connectionDetails?.getProperty(KEY_ORIENTDB_POOL_SIZE) ?: DEFAULT_ORIENTDB_POOL_SIZE]
+         size: connectionDetails?.getProperty(KEY_ORIENTDB_POOL_SIZE) ?: DEFAULT_ORIENTDB_POOL_SIZE,
+         create: connectionDetails?.getProperty(KEY_ORIENTDB_INITIALIZE_SCHEMA ?: DEFAULT_ORIENTDB_INITIALIZE_SCHEMA)]
     }
 
     private createDatabasePool(Map connectionDetails = null) {
         if (!this.orientPool) {
             def connectionProperties = connectionDetails
-            if (!connectionDetails) connectionProperties = getConnectionProperties(null)
+            if (!connectionDetails) connectionProperties = this.connectionProperties
             def poolClass = Class.forName("com.orientechnologies.orient.core.db.OPartitionedDatabasePool", true, Thread.currentThread().getContextClassLoader());
             this.orientPool = (OPartitionedDatabasePool) poolClass.newInstance(connectionProperties.url, connectionProperties.userName, connectionProperties.password, connectionProperties.size);
         }

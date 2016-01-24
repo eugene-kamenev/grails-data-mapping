@@ -8,6 +8,11 @@ import org.grails.datastore.mapping.model.IdentityMapping
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
 
+/**
+ * OrientClassMapping implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientClassMapping extends AbstractClassMapping<OrientEntity> {
 

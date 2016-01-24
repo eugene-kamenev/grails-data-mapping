@@ -9,22 +9,39 @@ class OrientMixedRelationshipsSpec extends GormDatastoreSpec {
 
     def "test that entity relationship saved from edge side"() {
         given:
-            def person = new Person(firstName: 'Homer', lastName: 'Simpson')
-            def country = new Country(name: 'England')
+            def homer = new Person(firstName: 'Homer', lastName: 'Simpson')
+            def lisa = new Person(firstName: 'Lisa', lastName: 'Simpson')
+            def marge = new Person(firstName: 'Marge', lastName: 'Simpson')
+            def england = new Country(name: 'England')
+            def usa = new Country(name: 'USA')
             def date = new Date(1990, 10, 12)
-            def livesIn = new LivesIn(in: person, out: country, since: date).save(flush: true)
+            lisa.livesIn = usa
+            marge.livesIn = england
+            marge.save()
+            lisa.save()
+            def homerLivesIn = new LivesIn(in: homer, out: england, since: date).save(flush: true)
             session.clear()
         when:
-            Person p = Person.get(person.id)
+            homer = Person.findByFirstNameAndLastName('Homer', 'Simpson')
+            lisa = Person.findByFirstNameLike('Li%')
+            marge = Person.findByFirstName('Marge')
         then:
-            p.livesIn != null
+            homer.livesIn != null
+            marge.livesIn != null
+            lisa.livesIn != null
         and:
-            p.livesIn.name == 'England'
+            homer.livesIn.name == 'England'
+            marge.livesIn.name == 'England'
+            lisa.livesIn.name == 'USA'
         and:
-            p.livesIn.residents.size() == 1
-            p.livesIn.residents[0].lastName == 'Simpson'
+            homer.livesIn.residents.size() == 2
+            marge.livesIn.residents.size() == 2
+            lisa.livesIn.residents.size() == 1
+        and:
+            marge.livesIn.id == homer.livesIn.id
+            lisa.livesIn.residents[0].firstName == 'Lisa'
         when:
-            LivesIn edge = LivesIn.get(livesIn.id)
+            LivesIn edge = LivesIn.get(homerLivesIn.id)
         then:
             edge.in.firstName == 'Homer'
             edge.out.cities.size() == 0
@@ -46,8 +63,5 @@ class OrientMixedRelationshipsSpec extends GormDatastoreSpec {
         then:
             c.name == 'England'
             c.residents[0].firstName == 'Homer'
-
-
-
     }
 }

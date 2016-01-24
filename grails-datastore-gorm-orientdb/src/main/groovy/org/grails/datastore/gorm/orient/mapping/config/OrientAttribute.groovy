@@ -5,6 +5,11 @@ import com.orientechnologies.orient.core.metadata.schema.OType
 import groovy.transform.CompileStatic
 import org.grails.datastore.mapping.document.config.Attribute
 
+/**
+ * OrientAttribute for mapping
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientAttribute extends Attribute {
     String field

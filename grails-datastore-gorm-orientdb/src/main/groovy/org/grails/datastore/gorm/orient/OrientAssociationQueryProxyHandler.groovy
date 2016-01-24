@@ -17,6 +17,12 @@ class OrientAssociationQueryProxyHandler extends AssociationQueryProxyHandler {
         super(session, executor, associationKey)
     }
 
+    /**
+     * Overriding because of edge usage, where we know vertex only id
+     *
+     * @param self
+     * @return
+     */
     @Override
     protected Object getProxyKey(Object self) {
         def key = super.getProxyKey(self)

@@ -3,6 +3,11 @@ package org.grails.datastore.gorm.orient.extensions
 import com.tinkerpop.blueprints.impls.orient.OrientElement
 import com.tinkerpop.gremlin.java.GremlinPipeline
 
+/**
+ * OrientExtensionMethods
+ *
+ * @author eugene.kamenev
+ */
 class OrientExtensions {
 
     /**

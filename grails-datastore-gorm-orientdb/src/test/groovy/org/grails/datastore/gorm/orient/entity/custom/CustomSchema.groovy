@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orient.entity.custom
 
 import com.orientechnologies.orient.core.id.ORecordId
 import grails.persistence.Entity
+import org.grails.datastore.gorm.orient.mapping.EdgeType
 
 @Entity
 class Person {
@@ -43,36 +44,15 @@ class City {
 }
 
 @Entity
-class LivesIn extends OrientEdge<Person, Country> {
+class LivesIn extends EdgeType<Person, Country> {
     Date since
 
     static mapping = {
-        orient type: 'edge'
     }
 }
 
 @Entity
-class OrientEdge<T, E> {
-    ORecordId id
-
-    private T inVertex
-    private E outVertex
-
-    static belongsTo = [T, E]
-
-    void setIn(T instance) {
-        inVertex = instance
-    }
-
-    T getIn() {
-        inVertex
-    }
-
-    E getOut() {
-        outVertex
-    }
-
-    void setOut(E instance) {
-        this.outVertex = instance
-    }
+class HasChild extends EdgeType<Person, Person> {
 }
+
+
