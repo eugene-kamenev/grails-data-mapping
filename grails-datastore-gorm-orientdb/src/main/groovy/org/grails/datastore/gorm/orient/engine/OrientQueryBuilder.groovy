@@ -52,7 +52,7 @@ class OrientQueryBuilder extends Query {
         for (projection in projections.projectionList) {
             def handler = PROJECT_HANDLERS.get(projection.class)
             if (handler != null) {
-                handler?.handle(entity, projection, this)
+                handler.handle(entity, projection, this)
             } else {
                 throw new UnsupportedOperationException("Criterion of type ${projection.class.name} are not supported by GORM for OrientDb")
             }

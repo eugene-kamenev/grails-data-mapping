@@ -27,9 +27,6 @@ class OrientAssociationQueryExecutor implements AssociationQueryExecutor<OIdenti
 
     @Override
     List<Object> query(OIdentifiable primaryKey) {
-        if (!association.isBidirectional()) {
-            println "not bidirectional association query needed"
-        }
         // for a bidirectional one-to-many we use the foreign key to query the inverse side of the association
         Association inverseSide = association.getInverseSide();
         Query query = session.createQuery(association.getAssociatedEntity().getJavaClass());

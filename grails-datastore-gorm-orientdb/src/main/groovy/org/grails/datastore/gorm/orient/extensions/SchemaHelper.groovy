@@ -15,6 +15,7 @@ import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.engine.OrientPersistentPropertyConverter
 import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.model.types.*
+
 /**
  * OrientDB Schema creation/altering helper methods
  *
@@ -40,7 +41,7 @@ class SchemaHelper {
                     def property = getOrCreateProperty(oClass, entity.getNativePropertyName(p.name), p.type)
                     if (mapping.getIndex()) {
                         // here we need a check, but too lazy right now, checking only first
-                        def classIndex = oClass.getInvolvedIndexes(mapping.targetName)[0]
+                        def classIndex = oClass.getInvolvedIndexes(entity.getNativePropertyName(p.name))[0]
                         if (!classIndex) {
                             property.createIndex(mapping.getIndex())
                         }
@@ -51,25 +52,45 @@ class SchemaHelper {
         }
         // creating links and relations now
         for (entity in entities) {
+            if (entity.edge) {
+                continue;
+            }
             def oClass = schema.getClass(entity.className)
             for (p in entity.persistentProperties) {
                 def mapping = (OrientAttribute) p.mapping.mappedForm
                 if (p instanceof Association) {
-                    def associationEntity = ((Association)p).associatedEntity
-                    def associationOClass = schema.getClass(((OrientPersistentEntity) associationEntity).className)
+                    def associationEntity = (OrientPersistentEntity) ((Association) p).associatedEntity
+                    def associationOClass = schema.getClass(associationEntity.className)
                     if (mapping.edge) {
+                        def edgeGormEntity = (OrientPersistentEntity) associationEntity.mappingContext.getPersistentEntity(mapping.edge.name)
+                        def inAssociation = (OrientPersistentEntity) ((Association) edgeGormEntity.getPropertyByName('in')).associatedEntity
+                        def outAssociation = (OrientPersistentEntity) ((Association) edgeGormEntity.getPropertyByName('out')).associatedEntity
+                        def edgeOrientClass = schema.getClass(edgeGormEntity.className)
+                        OProperty orientProperty = null
+                        if (inAssociation == entity) {
+                            orientProperty = getOrCreateLinkedProperty(edgeOrientClass, 'in', OType.LINK, schema.getClass(inAssociation.className))
+                        }
+                        if(outAssociation == entity) {
+                            orientProperty = getOrCreateLinkedProperty(edgeOrientClass, 'out', OType.LINK, schema.getClass(outAssociation.className))
+                        }
                         // decide here mapping one-to-many, many-to-one, many-to-many, many-to-one in/out constraints on edges
                         if (p instanceof OneToMany) {
 
                         }
                         if (p instanceof ManyToOne) {
-
-                        }
-                        if (p instanceof ManyToMany) {
-
+                            if (inAssociation == entity) {
+                                orientProperty.createIndex(OClass.INDEX_TYPE.UNIQUE)
+                            }
                         }
                         if (p instanceof OneToOne) {
-
+                            OProperty secondProperty = null
+                            if (orientProperty.name == 'in') {
+                                secondProperty = getOrCreateLinkedProperty(edgeOrientClass, 'out', OType.LINK, schema.getClass(outAssociation.className))
+                            } else {
+                                secondProperty = getOrCreateLinkedProperty(edgeOrientClass, 'in', OType.LINK, schema.getClass(inAssociation.className))
+                            }
+                            orientProperty.createIndex(OClass.INDEX_TYPE.UNIQUE)
+                            secondProperty.createIndex(OClass.INDEX_TYPE.UNIQUE)
                         }
                         continue;
                     }
@@ -82,7 +103,7 @@ class SchemaHelper {
 
                     }
                     if (p instanceof ManyToOne) {
-                        if (((ManyToOne)p).owningSide && ((ManyToOne)p).foreignKeyInChild) {
+                        if (((ManyToOne) p).owningSide && ((ManyToOne) p).foreignKeyInChild) {
                             continue;
                         }
                     }
@@ -90,7 +111,7 @@ class SchemaHelper {
 
                     }
                     if (p instanceof OneToOne) {
-                        if (((OneToOne)p).owningSide && !((OneToOne)p).bidirectional) {
+                        if (((OneToOne) p).owningSide && !((OneToOne) p).bidirectional) {
 
                         }
                     }
@@ -175,8 +196,11 @@ class SchemaHelper {
      */
     static OProperty getOrCreateLinkedProperty(OClass oClass, String property, OType type, OClass linkedClass) {
         def prop = oClass.getProperty(property)
-        if (!prop) {
+        if (prop == null) {
             prop = oClass.createProperty(property, type, linkedClass)
+        }
+        if (!(prop.type in OrientPersistentPropertyConverter.linkedTypes)) {
+            prop.setLinkedType(type)
         }
         return prop
     }

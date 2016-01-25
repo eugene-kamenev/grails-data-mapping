@@ -46,27 +46,6 @@ class Setup {
         }
         datastore = new OrientDatastore(mappingContext, ctx, poolFactory)
         datastore.mappingContext.proxyFactory = new OrientProxyFactory()
-        /*OrientGraph graph = null
-        mappingContext.getPersistentEntities().each { PersistentEntity e ->
-            def orientEntity = (OrientPersistentEntity) e
-            if (orientEntity.isVertex() || orientEntity.isEdge()) {
-                if (graph == null) {
-                    graph = new OrientGraph((ODatabaseDocumentTx)db)
-                }
-                createVertexOrEdge(graph, orientEntity)
-            } else {
-                if (graph == null) {
-                    db.command(new OCommandSQL("CREATE CLASS $orientEntity.className")).execute()
-                } else {
-                    createVertexOrEdge(graph, orientEntity)
-                }
-
-            }
-        }
-        if (graph != null) {
-            graph.shutdown(false)
-        }
-        db.close()*/
 
         def grailsApplication = new DefaultGrailsApplication(classes as Class[], Setup.getClassLoader())
         grailsApplication.mainContext = ctx
