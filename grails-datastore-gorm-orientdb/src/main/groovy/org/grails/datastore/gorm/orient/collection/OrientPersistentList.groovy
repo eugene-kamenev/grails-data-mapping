@@ -5,6 +5,11 @@ import org.grails.datastore.mapping.collection.PersistentList
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 
+/**
+ * OrientDB PersistentList association query impl
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientPersistentList extends PersistentList {
     OrientPersistentList(Serializable associationKey, Session session, AssociationQueryExecutor indexer) {

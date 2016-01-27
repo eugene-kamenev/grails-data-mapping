@@ -4,6 +4,11 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
 import groovy.transform.CompileStatic
 import org.grails.datastore.mapping.transactions.Transaction
 
+/**
+ * OrientDB Transaction implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientTransaction implements Transaction<ODatabaseDocumentTx> {
 
@@ -11,13 +16,20 @@ class OrientTransaction implements Transaction<ODatabaseDocumentTx> {
 
     boolean active = true
 
+    /**
+     * Current documentTx instance
+     */
     ODatabaseDocumentTx documentTx
+
     boolean rollbackOnly = false
 
     OrientTransaction(ODatabaseDocumentTx documentTx) {
         this.documentTx = documentTx.begin()
     }
 
+    /**
+     * Transaction commit
+     */
     @Override
     void commit() {
         if(isActive() && !rollbackOnly) {
@@ -25,6 +37,9 @@ class OrientTransaction implements Transaction<ODatabaseDocumentTx> {
         }
     }
 
+    /**
+     * Transaction rollback
+     */
     @Override
     void rollback() {
         if(isActive()) {
@@ -34,6 +49,9 @@ class OrientTransaction implements Transaction<ODatabaseDocumentTx> {
         }
     }
 
+    /**
+     * Transaction rollback
+     */
     void rollbackOnly() {
         if(isActive()) {
             rollbackOnly = true
@@ -42,16 +60,29 @@ class OrientTransaction implements Transaction<ODatabaseDocumentTx> {
         }
     }
 
+    /**
+     * Native documentTx instance
+     * @return
+     */
     @Override
     ODatabaseDocumentTx getNativeTransaction() {
         return documentTx
     }
 
+    /**
+     * If transaction is active
+     * @return
+     */
     @Override
     boolean isActive() {
         return active
     }
 
+    /**
+     * Transaction timeout not supported
+     *
+     * @param timeout The timeout
+     */
     @Override
     void setTimeout(int timeout) {
         throw new UnsupportedOperationException()

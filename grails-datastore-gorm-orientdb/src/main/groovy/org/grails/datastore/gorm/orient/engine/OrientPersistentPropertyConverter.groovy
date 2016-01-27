@@ -28,6 +28,8 @@ import javax.persistence.FetchType
 
 /**
  * Main class that represents different marshall/unmarshall methods for associations and basic properties
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 abstract class OrientPersistentPropertyConverter {

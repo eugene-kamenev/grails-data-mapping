@@ -7,6 +7,11 @@ import org.grails.datastore.mapping.model.AbstractPersistentEntity
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentProperty
 
+/**
+ * OrientDB Persistent Entity implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientPersistentEntity extends AbstractPersistentEntity<OrientEntity> {
 
@@ -34,26 +39,46 @@ class OrientPersistentEntity extends AbstractPersistentEntity<OrientEntity> {
         mappedForm
     }
 
+    /**
+     * If entity mapped as document
+     *
+     * @return
+     */
     boolean isDocument() {
         mappedForm.orient.type == 'document'
     }
 
+    /**
+     * If entity mapped as vertex
+     *
+     * @return
+     */
     boolean isVertex() {
         mappedForm.orient.type == 'vertex'
     }
 
+    /**
+     * If entity mapped as edge
+     * @return
+     */
     boolean isEdge() {
         mappedForm.orient.type == 'edge'
     }
 
+    /**
+     * If entity mapped as graph one
+     *
+     * @return
+     */
     boolean isGraph() {
         edge || vertex
     }
 
-    OrientClassMapping getClassMapping() {
-        classMapping
-    }
-
+    /**
+     * Get mapped class name
+     *
+     * @return
+     */
     String getClassName() {
         if (!orientClassName) {
             orientClassName = mappedForm.orient.cluster ?: javaClass.simpleName
@@ -61,11 +86,22 @@ class OrientPersistentEntity extends AbstractPersistentEntity<OrientEntity> {
         orientClassName
     }
 
+    /**
+     * Identity getter
+     *
+     * @return
+     */
     @Override
     PersistentProperty getIdentity() {
         return super.getIdentity()
     }
 
+    /**
+     * Get mapped entity property name
+     *
+     * @param name
+     * @return
+     */
     String getNativePropertyName(String name) {
         if (identity.name == name) {
             return "@rid"

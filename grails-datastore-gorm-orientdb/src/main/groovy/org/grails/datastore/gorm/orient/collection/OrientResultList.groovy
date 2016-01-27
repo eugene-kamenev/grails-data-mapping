@@ -9,6 +9,11 @@ import org.grails.datastore.gorm.query.AbstractResultList
 
 import javax.persistence.LockModeType
 
+/**
+ * OrientDB result list implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientResultList extends AbstractResultList {
     final protected transient OrientEntityPersister entityPersister;

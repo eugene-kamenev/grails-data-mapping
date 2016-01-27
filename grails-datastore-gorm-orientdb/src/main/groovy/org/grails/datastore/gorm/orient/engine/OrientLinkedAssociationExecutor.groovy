@@ -12,6 +12,8 @@ import org.grails.datastore.mapping.model.types.Association
 
 /**
  * OrientDB lazy association executor, need to be tested in remote mode with lazy-loading disabled
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 class OrientLinkedAssociationExecutor implements AssociationQueryExecutor<OIdentifiable, Object> {

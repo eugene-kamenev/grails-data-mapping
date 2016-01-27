@@ -6,7 +6,7 @@ import com.tinkerpop.gremlin.java.GremlinPipeline
 /**
  * OrientExtensionMethods
  *
- * @author eugene.kamenev
+ * @author eugenekamenev
  */
 class OrientExtensions {
 

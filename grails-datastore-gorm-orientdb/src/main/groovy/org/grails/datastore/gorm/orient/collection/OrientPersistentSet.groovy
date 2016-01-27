@@ -5,6 +5,11 @@ import org.grails.datastore.mapping.collection.PersistentSet
 import org.grails.datastore.mapping.core.Session
 import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 
+/**
+ * OrientDB PersistentSet association query impl
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientPersistentSet extends PersistentSet {
 

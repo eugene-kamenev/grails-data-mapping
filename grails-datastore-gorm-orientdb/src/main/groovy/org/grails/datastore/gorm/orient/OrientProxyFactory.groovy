@@ -8,6 +8,8 @@ import org.grails.datastore.mapping.proxy.JavassistProxyFactory
 
 /**
  * OrientProxyFactory implementation, needed to alter some logic for edges associations
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 class OrientProxyFactory extends JavassistProxyFactory {

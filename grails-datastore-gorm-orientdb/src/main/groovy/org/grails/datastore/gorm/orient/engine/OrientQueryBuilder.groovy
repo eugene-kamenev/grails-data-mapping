@@ -11,6 +11,11 @@ import static com.github.raymanrt.orientqb.query.Clause.*
 import static com.github.raymanrt.orientqb.query.Projection.projection
 import static com.github.raymanrt.orientqb.query.ProjectionFunction.*
 
+/**
+ * OrientDB SQL Query builder based on @raymanrt orientqb project
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientQueryBuilder extends Query {
     protected final OrientPersistentEntity entity
@@ -21,6 +26,14 @@ class OrientQueryBuilder extends Query {
         from(entity.className)
     }
 
+    /**
+     * Main method that populates query object
+     *
+     * @param projectionList
+     * @param criterion
+     * @param queryArgs
+     * @return
+     */
     Query build(GrailsQuery.ProjectionList projectionList, GrailsQuery.Junction criterion, Map queryArgs) {
         applyProjections(projectionList, queryArgs)
         applyCriterions(criterion, queryArgs)
@@ -48,6 +61,13 @@ class OrientQueryBuilder extends Query {
         this
     }
 
+    /**
+     * Method applies projections on query
+     *
+     * @param projections
+     * @param queryArgs
+     * @return
+     */
     Query applyProjections(GrailsQuery.ProjectionList projections, Map queryArgs) {
         for (projection in projections.projectionList) {
             def handler = PROJECT_HANDLERS.get(projection.class)
@@ -60,6 +80,13 @@ class OrientQueryBuilder extends Query {
         this
     }
 
+    /**
+     * Method applies criterions on query
+     *
+     * @param junction
+     * @param queryArgs
+     * @return
+     */
     Query applyCriterions(GrailsQuery.Junction junction, Map queryArgs) {
         for (criterion in junction.criteria) {
             def handler = CRITERION_HANDLERS.get(criterion.class)
@@ -416,6 +443,14 @@ class OrientQueryBuilder extends Query {
         }
     }
 
+    /**
+     * Add named parameter to query, parameters should be named different
+     *
+     * @param name
+     * @param value
+     * @param index
+     * @return
+     */
     public String addToParams(String name, Object value, int index = 0) {
         def key = "${name}_${index}".toString()
         if (!namedParameters[key]) {

@@ -13,6 +13,8 @@ import org.springframework.context.ApplicationEventPublisher
 
 /**
  * Represents OrientDB GORM Session implementation
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 class OrientSession extends AbstractSession<ODatabaseDocumentTx> {

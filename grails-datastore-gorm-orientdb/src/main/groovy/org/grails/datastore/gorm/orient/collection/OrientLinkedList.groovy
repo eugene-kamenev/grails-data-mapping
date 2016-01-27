@@ -9,6 +9,12 @@ import org.grails.datastore.gorm.orient.engine.OrientEntityPersister
 import org.grails.datastore.mapping.engine.EntityAccess
 import org.grails.datastore.mapping.model.types.Association
 
+/**
+ * OrientDB Lazy linked list,
+ * TODO: should be rewritten
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientLinkedList implements List {
     private List delegate

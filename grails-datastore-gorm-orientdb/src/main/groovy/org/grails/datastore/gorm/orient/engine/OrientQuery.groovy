@@ -4,6 +4,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.query.OResultSet
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
 import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.gorm.orient.collection.OrientResultList
@@ -13,7 +14,13 @@ import org.grails.datastore.mapping.query.Query
 import org.grails.datastore.mapping.query.api.QueryArgumentsAware
 import org.springframework.dao.InvalidDataAccessApiUsageException
 
+/**
+ * OrientDB GORM query implementation
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
+@Slf4j
 class OrientQuery extends org.grails.datastore.mapping.query.Query implements QueryArgumentsAware {
 
     protected Map queryArgs = [:]
@@ -38,7 +45,6 @@ class OrientQuery extends org.grails.datastore.mapping.query.Query implements Qu
             list = executeQueryForDocument(orientEntity, criteria)
         }
         def persister = (OrientEntityPersister) getSession().getPersister(orientEntity)
-        println "query returned ${list.size()} result: \n $list"
         return new OrientResultList(0, (OResultSet) list, persister)
     }
 
@@ -57,8 +63,7 @@ class OrientQuery extends org.grails.datastore.mapping.query.Query implements Qu
             }
         }
         builder.build(projections, criteria, queryArgs)
-        println "EXECUTING QUERY: " + builder.toString()
-        println "With params: $builder.namedParameters"
+        log.info("EXECUTING OrientDB query: ${builder.toString()} \n with params $builder.namedParameters")
         return session.documentTx.query(new OSQLSynchQuery(builder.toString()), builder.namedParameters)
     }
 

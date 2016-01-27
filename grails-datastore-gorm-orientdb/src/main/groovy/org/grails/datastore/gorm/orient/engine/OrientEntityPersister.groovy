@@ -21,6 +21,8 @@ import org.grails.datastore.mapping.query.Query
 import org.springframework.context.ApplicationEventPublisher
 /**
  * OrientDB entity persister implementation
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 @Slf4j

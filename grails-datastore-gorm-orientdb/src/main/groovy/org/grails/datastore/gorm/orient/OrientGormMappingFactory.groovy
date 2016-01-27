@@ -13,6 +13,9 @@ import org.grails.datastore.mapping.model.types.Identity
 
 import java.beans.PropertyDescriptor
 
+/**
+ * Gorm Mapping Factory for OrientDB implementation
+ */
 @CompileStatic
 class OrientGormMappingFactory extends AbstractGormMappingFactory {
     @Override

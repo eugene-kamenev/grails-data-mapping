@@ -4,36 +4,36 @@ import com.orientechnologies.orient.core.id.ORecordId
 /**
  * Base edge type, should be extended by custom edges
  *
- * @param <I> direction in vertex entity
- * @param <O> direction out vertex entity
+ * @param <IN> direction in vertex entity
+ * @param <OUT> direction out vertex entity
  *
- * @author eugene.kamenev
+ * @author eugenekamenev
  */
-class EdgeType<I, O> {
+class EdgeType<IN, OUT> {
     ORecordId id
 
-    private I inVertex
-    private O outVertex
+    private IN inVertex
+    private OUT outVertex
 
-    static belongsTo = [I, O]
+    static belongsTo = [IN, OUT]
 
     static mapping = {
         orient type: 'edge'
     }
 
-    void setIn(I instance) {
+    void setIn(IN instance) {
         inVertex = instance
     }
 
-    I getIn() {
+    IN getIn() {
         inVertex
     }
 
-    O getOut() {
+    OUT getOut() {
         outVertex
     }
 
-    void setOut(O instance) {
+    void setOut(OUT instance) {
         this.outVertex = instance
     }
 }

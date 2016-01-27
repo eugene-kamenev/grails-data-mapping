@@ -11,6 +11,11 @@ import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.types.Association
 
+/**
+ * OrientDB simple edge association query via Gremlin Pipe executor
+ *
+ * @author eugenekamenev
+ */
 @CompileStatic
 class OrientEdgeAssociationQueryExecutor implements AssociationQueryExecutor<OIdentifiable, Object>  {
     private final OIdentifiable identifiable
@@ -23,6 +28,13 @@ class OrientEdgeAssociationQueryExecutor implements AssociationQueryExecutor<OId
         this.identifiable = identifiable
     }
 
+    /**
+     * Here is a special logic about primaryKey, actually it
+     * will be vertex one as a start for a Gremlin Pipe
+     *
+     * @param primaryKey The primary key
+     * @return
+     */
     @Override
     List<Object> query(OIdentifiable primaryKey) {
         def key = primaryKey
@@ -48,11 +60,19 @@ class OrientEdgeAssociationQueryExecutor implements AssociationQueryExecutor<OId
         }
     }
 
+    /**
+     * Get associated persistent entity
+     * @return
+     */
     @Override
     PersistentEntity getIndexedEntity() {
         return association.associatedEntity
     }
 
+    /**
+     * Query does not return keys
+     * @return
+     */
     @Override
     boolean doesReturnKeys() {
         return false

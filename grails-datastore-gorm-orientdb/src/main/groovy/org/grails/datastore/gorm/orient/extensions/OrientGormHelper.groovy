@@ -15,6 +15,8 @@ import org.grails.datastore.mapping.model.types.OneToMany
 
 /**
  * Helper methods for OrientDB GORM
+ *
+ * @author @eugenekamenev
  */
 @CompileStatic
 abstract class OrientGormHelper {

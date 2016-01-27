@@ -9,7 +9,9 @@ import org.grails.datastore.mapping.model.types.Association
 import org.grails.datastore.mapping.query.Query
 
 /**
- * Executor that handles relations from inverse side.
+ * Executor that handles relations from inverse side via query
+ *
+ * @author eugenekamenev
  */
 @CompileStatic
 class OrientAssociationQueryExecutor implements AssociationQueryExecutor<OIdentifiable, Object> {
