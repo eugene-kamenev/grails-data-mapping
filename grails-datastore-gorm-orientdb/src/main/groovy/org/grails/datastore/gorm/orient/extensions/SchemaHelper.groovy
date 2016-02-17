@@ -22,7 +22,7 @@ import org.grails.datastore.mapping.model.types.*
  * @author eugenekamenev
  */
 @CompileStatic
-class SchemaHelper {
+abstract class SchemaHelper {
 
     static initDatabase(ODatabaseDocumentTx tx, List<OrientPersistentEntity> entities) {
         def containsGraphs = entities.find {it.graph}
@@ -108,7 +108,7 @@ class SchemaHelper {
                         }
                     }
                     if (p instanceof ManyToMany) {
-
+                        continue;
                     }
                     if (p instanceof OneToOne) {
                         if (((OneToOne) p).owningSide && !((OneToOne) p).bidirectional) {

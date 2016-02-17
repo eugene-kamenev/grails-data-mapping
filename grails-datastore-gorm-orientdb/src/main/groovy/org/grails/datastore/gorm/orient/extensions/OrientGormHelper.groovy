@@ -11,8 +11,8 @@ import groovy.transform.stc.FromString
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.mapping.model.PersistentProperty
+import org.grails.datastore.mapping.model.types.Association
 import org.grails.datastore.mapping.model.types.OneToMany
-
 /**
  * Helper methods for OrientDB GORM
  *
@@ -22,6 +22,33 @@ import org.grails.datastore.mapping.model.types.OneToMany
 abstract class OrientGormHelper {
 
     /**
+     * Method that tries
+     * @param association
+     * @return
+     */
+    static OType getOTypeForField(Association association) {
+        if (List.isAssignableFrom(association.type)) {
+            if (association.embedded) {
+                return OType.EMBEDDEDLIST
+            }
+            return OType.LINKLIST
+        }
+        if (Set.isAssignableFrom(association.type)) {
+            if (association.embedded) {
+                return OType.EMBEDDEDSET
+            }
+            return OType.LINKSET
+        }
+        if (Map.isAssignableFrom(association.type)) {
+            if (association.embedded) {
+                return OType.EMBEDDEDMAP
+            }
+            return OType.LINKMAP
+        }
+        return OType.LINK
+    }
+
+    /**
      * Create recordId from provided object
      *
      * @param key
@@ -29,7 +56,9 @@ abstract class OrientGormHelper {
      */
     static ORecordId createRecordId(Object key) {
         ORecordId recId = null;
-
+        if (key instanceof OIdentifiable) {
+            return (ORecordId) key.identity
+        }
         if (key instanceof ORecordId) {
             recId = (ORecordId) key;
         } else if (key instanceof String) {
@@ -107,7 +136,7 @@ abstract class OrientGormHelper {
     }
 
     static OIdentifiable saveEntry(OIdentifiable oIdentifiable) {
-            return oIdentifiable.record.save()
+            return oIdentifiable.record.save().identity
     }
 
     static String getOrientClassName(OIdentifiable oIdentifiable) {

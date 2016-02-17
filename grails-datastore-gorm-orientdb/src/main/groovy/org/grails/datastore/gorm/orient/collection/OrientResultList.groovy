@@ -1,5 +1,6 @@
 package org.grails.datastore.gorm.orient.collection
 
+import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.query.OResultSet
 import com.tinkerpop.blueprints.impls.orient.OrientVertex
@@ -20,7 +21,7 @@ class OrientResultList extends AbstractResultList {
 
     protected final LockModeType lockMode
 
-    OrientResultList(int offset, Iterator<Object> cursor, OrientEntityPersister entityPersister) {
+    OrientResultList(int offset, Iterator cursor, OrientEntityPersister entityPersister) {
         super(offset, cursor)
         this.entityPersister = entityPersister
         this.lockMode = javax.persistence.LockModeType.NONE;
@@ -55,6 +56,9 @@ class OrientResultList extends AbstractResultList {
                     return doc.fieldValues().toList()
                 }
             }
+        }
+        if (next instanceof OIdentifiable) {
+            return (((OIdentifiable) next).identity).record.load() as ODocument
         }
         return next
     }

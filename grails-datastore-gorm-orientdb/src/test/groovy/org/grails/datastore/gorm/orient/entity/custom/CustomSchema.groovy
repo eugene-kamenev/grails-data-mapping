@@ -13,11 +13,18 @@ class Person {
     String firstName
     String lastName
 
+    Set<Person> friends
+
+    static hasMany = [friends: Person]
+
     static belongsTo = [Country]
+
+    static mappedBy = [friends: 'friends']
 
     static mapping = {
         orient type: 'vertex'
         livesIn edge: LivesIn
+        friends edge: HasFriend
     }
 }
 
@@ -42,7 +49,9 @@ class City {
     ORecordId id
     String name
 }
-
+/**
+ * OneToMany edge
+ */
 @Entity
 class LivesIn extends EdgeType<Person, Country> {
     Date since
@@ -50,9 +59,11 @@ class LivesIn extends EdgeType<Person, Country> {
     static mapping = {
     }
 }
-
+/**
+ * ManyToMany edge
+ */
 @Entity
-class HasChild extends EdgeType<Person, Person> {
+class HasFriend extends EdgeType<Person, Person> {
 }
 
 

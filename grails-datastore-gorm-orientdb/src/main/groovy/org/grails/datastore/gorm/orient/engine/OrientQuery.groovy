@@ -4,7 +4,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.query.OResultSet
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
 import groovy.transform.CompileStatic
-import groovy.util.logging.Slf4j
+import groovy.util.logging.Log
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientSession
 import org.grails.datastore.gorm.orient.collection.OrientResultList
@@ -13,14 +13,13 @@ import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.query.Query
 import org.grails.datastore.mapping.query.api.QueryArgumentsAware
 import org.springframework.dao.InvalidDataAccessApiUsageException
-
 /**
  * OrientDB GORM query implementation
  *
  * @author eugenekamenev
  */
 @CompileStatic
-@Slf4j
+@Log
 class OrientQuery extends org.grails.datastore.mapping.query.Query implements QueryArgumentsAware {
 
     protected Map queryArgs = [:]

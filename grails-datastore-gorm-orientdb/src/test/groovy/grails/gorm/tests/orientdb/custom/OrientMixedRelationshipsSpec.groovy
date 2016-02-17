@@ -2,6 +2,7 @@ package grails.gorm.tests.orientdb.custom
 
 import grails.gorm.tests.GormDatastoreSpec
 import org.grails.datastore.gorm.orient.entity.custom.Country
+import org.grails.datastore.gorm.orient.entity.custom.HasFriend
 import org.grails.datastore.gorm.orient.entity.custom.LivesIn
 import org.grails.datastore.gorm.orient.entity.custom.Person
 
@@ -63,5 +64,37 @@ class OrientMixedRelationshipsSpec extends GormDatastoreSpec {
         then:
             c.name == 'England'
             c.residents[0].firstName == 'Homer'
+    }
+
+    def "test many to many edge relationship" () {
+        given:
+        10.times {
+            new Person(firstName: "Person $it").save()
+        }
+        session.flush()
+        session.clear()
+
+        when:
+        def persons = Person.findAll() as List<Person>
+
+        def person1 = persons[0]
+        def person2 = persons[1]
+        def person3 = persons[2]
+       // person1.addToFriends(person2)
+      //  person2.addToFriends(person3)
+        def friendship = new HasFriend(in: person1, out: person2).save()
+        def friendship2 = new HasFriend(in: person2, out: person3).save(flush: true)
+        session.flush()
+        session.clear()
+        person1 = Person.get(person1.id)
+        person2 = Person.get(person2.id)
+        person3 = Person.get(person3.id)
+        then:
+
+                person1.friends.size() == 1
+
+                person2.friends.size() == 2
+
+                person3.friends.size() == 1
     }
 }

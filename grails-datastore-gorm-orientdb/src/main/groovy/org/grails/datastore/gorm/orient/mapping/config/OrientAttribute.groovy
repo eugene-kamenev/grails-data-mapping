@@ -4,7 +4,6 @@ import com.orientechnologies.orient.core.metadata.schema.OClass
 import com.orientechnologies.orient.core.metadata.schema.OType
 import groovy.transform.CompileStatic
 import org.grails.datastore.mapping.document.config.Attribute
-
 /**
  * OrientAttribute for mapping
  *
@@ -20,5 +19,9 @@ class OrientAttribute extends Attribute {
     void setField(String field) {
         setTargetName(field)
         this.field = field
+    }
+
+    boolean isLinkedCollection() {
+        type.isLink()
     }
 }

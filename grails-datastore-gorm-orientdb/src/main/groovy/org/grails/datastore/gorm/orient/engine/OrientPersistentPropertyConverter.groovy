@@ -9,9 +9,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientElement
 import groovy.transform.CompileStatic
 import org.grails.datastore.gorm.orient.OrientPersistentEntity
 import org.grails.datastore.gorm.orient.OrientSession
-import org.grails.datastore.gorm.orient.collection.OrientLinkedSet
 import org.grails.datastore.gorm.orient.collection.OrientPersistentSet
-import org.grails.datastore.gorm.orient.extensions.OrientGormHelper
 import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.collection.PersistentList
 import org.grails.datastore.mapping.collection.PersistentSet
@@ -25,7 +23,6 @@ import org.grails.datastore.mapping.model.types.*
 
 import javax.persistence.CascadeType
 import javax.persistence.FetchType
-
 /**
  * Main class that represents different marshall/unmarshall methods for associations and basic properties
  *
@@ -219,12 +216,12 @@ abstract class OrientPersistentPropertyConverter {
                 def associatedEntity = association.getAssociatedEntity()
                 def associationAccess = session.createEntityAccess(associatedEntity, value)
                 if (!association.owningSide && association.referencedPropertyName == null) {
-                    def list = session.persist((Iterable) associationAccess.getEntity())
-                    OrientGormHelper.setValue((OrientPersistentEntity) entityAccess.persistentEntity, association, ((OIdentifiable) entityAccess.identifier).record.load(), list)
+                    //def list = session.persist((Iterable) associationAccess.getEntity())
+                    //OrientGormHelper.setValue((OrientPersistentEntity) entityAccess.persistentEntity, association, ((OIdentifiable) entityAccess.identifier).record.load(), list)
                     return
                 }
                 if (!association.owningSide && association.referencedPropertyName != null) {
-                    session.persist((Iterable) associationAccess.getEntity())
+                   // session.persist((Iterable) associationAccess.getEntity())
                 }
             }
 
@@ -234,12 +231,12 @@ abstract class OrientPersistentPropertyConverter {
         void unmarshall(OIdentifiable nativeEntry, Association association, EntityAccess entityAccess, OrientSession session) {
             def entity = entityAccess.entity
             if (!association.owningSide && association.referencedPropertyName == null) {
-                entityAccess.setProperty(association.name, new OrientLinkedSet(entityAccess, session, association, (OIdentifiable) entityAccess.identifier))
+                //entityAccess.setProperty(association.name, new OrientLinkedSet(entityAccess, session, association, (OIdentifiable) entityAccess.identifier))
                 return;
             }
             if (!association.owningSide && association.referencedPropertyName != null) {
                 def queryExecutor = (AssociationQueryExecutor) new OrientAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, association, session)
-                def associationSet = new OrientPersistentSet((Serializable) entityAccess.identifier, session, queryExecutor)
+                def associationSet = new OrientPersistentSet((Serializable) entityAccess.identifier, session, entityAccess, (ToMany) association)
                 entityAccess.setPropertyNoConversion(association.name, associationSet)
             }
         }
@@ -284,7 +281,7 @@ abstract class OrientPersistentPropertyConverter {
                 if (property.doesCascade(CascadeType.PERSIST) && associatedEntity != null) {
                     if (!property.isForeignKeyInChild()) {
                         if (!child) {
-                            child = session.getPersister(associatedEntity).persist(value)
+                            //child = session.getPersister(associatedEntity).persist(value)
                         }
                         setValue((OIdentifiable) parent, property, child)
                         // adding to referenced side collection
@@ -295,7 +292,7 @@ abstract class OrientPersistentPropertyConverter {
                             }
                         }
                     } else {
-                        session.persist(entityAccess.getProperty(property.name))
+                        // session.persist(entityAccess.getProperty(property.name))
                     }
                 }
             }
@@ -312,8 +309,8 @@ abstract class OrientPersistentPropertyConverter {
             if (isLazy) {
                 if (property.owningSide && property.foreignKeyInChild) {
                     def queryExecutor = new OrientAssociationQueryExecutor((OIdentifiable) entityAccess.identifier, property, session)
-                    def result = new OrientPersistentSet((Serializable) entityAccess.identifier, session, queryExecutor)
-                    entityAccess.setProperty(property.name, result);
+                    //def result = new OrientPersistentSet((Serializable) entityAccess.identifier, session, entityAccess, (ToMany) property)
+                   // entityAccess.setProperty(property.name, result);
                     return;
                 }
                 def value = getValue(nativeEntry, property)
@@ -419,25 +416,27 @@ abstract class OrientPersistentPropertyConverter {
     static class EdgeOneToManyConverter implements PropertyConverter<OneToMany> {
         @Override
         void marshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientSession session) {
-
-            println "marshall one to many edge converter"
         }
 
         @Override
         void unmarshall(OIdentifiable nativeEntry, OneToMany property, EntityAccess entityAccess, OrientSession session) {
-            entityAccess.setProperty(property.name, new OrientPersistentSet((Serializable) entityAccess.identifier, session, new OrientEdgeAssociationQueryExecutor(property, session)))
+           // entityAccess.setProperty(property.name, new OrientPersistentSet((Serializable) entityAccess.identifier, session, new OrientEdgeAssociationQueryExecutor(property, session)))
         }
     }
 
     static class EdgeManyToManyConverter implements PropertyConverter<ManyToMany> {
         @Override
         void marshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientSession session) {
-            println "marshall many to many called"
+            def value = entityAccess.getProperty(property.name)
+            if (value != null) {
+                def childEntityAccess = session.createEntityAccess(property.associatedEntity, entityAccess.getProperty(property.name))
+
+            }
         }
 
         @Override
         void unmarshall(OIdentifiable nativeEntry, ManyToMany property, EntityAccess entityAccess, OrientSession session) {
-            println "unmarshall many to many called"
+            //entityAccess.setProperty(property.name, new OrientPersistentSet((Serializable) entityAccess.identifier, session, new OrientEdgeAssociationQueryExecutor(property, session, false, null)))
         }
     }
 
@@ -446,11 +445,11 @@ abstract class OrientPersistentPropertyConverter {
         void marshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientSession session) {
             def value = entityAccess.getProperty(property.name)
             if (value != null) {
-                def childEntityAccess = session.createEntityAccess(property.associatedEntity, entityAccess.getProperty(property.name))
+                def childEntityAccess = session.createEntityAccess(property.associatedEntity, value)
                 def child = ((OIdentifiable) childEntityAccess.identifier)?.record?.load()
                 def parent = ((OIdentifiable) entityAccess.identifier)?.record?.load()
                 if (child == null) {
-                    session.getPersister(property.associatedEntity).persist(childEntityAccess.getEntity())
+                    //session.getPersister(property.associatedEntity).persist(childEntityAccess.getEntity())
                 }
                 if (!property.isForeignKeyInChild() && !property.owningSide) {
                     def edgeEntity = session.mappingContext.getPersistentEntity(((OrientAttribute) property.mapping.mappedForm).edge.name)
@@ -463,10 +462,9 @@ abstract class OrientPersistentPropertyConverter {
         @Override
         void unmarshall(OIdentifiable nativeEntry, ManyToOne property, EntityAccess entityAccess, OrientSession session) {
             if (!property.isForeignKeyInChild() && !property.owningSide) {
-                def queryExecutor = new OrientEdgeAssociationQueryExecutor(property, session, (OIdentifiable) entityAccess.identifier) as AssociationQueryExecutor
-                final Object proxy = session.getMappingContext().getProxyFactory().createProxy(
-                        session, queryExecutor, (Serializable) null);
-                entityAccess.setPropertyNoConversion(property.name, proxy);
+                def queryExecutor = new OrientEdgeAssociationQueryExecutor(property, session, true, (OIdentifiable) entityAccess.identifier) as AssociationQueryExecutor
+                final Object proxy = session.getMappingContext().getProxyFactory().createProxy(session, queryExecutor, (Serializable) entityAccess.identifier);
+                entityAccess.setProperty(property.name, proxy);
             }
         }
     }

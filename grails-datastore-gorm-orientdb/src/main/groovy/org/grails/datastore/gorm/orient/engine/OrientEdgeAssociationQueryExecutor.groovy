@@ -10,6 +10,7 @@ import org.grails.datastore.gorm.orient.mapping.config.OrientAttribute
 import org.grails.datastore.mapping.engine.AssociationQueryExecutor
 import org.grails.datastore.mapping.model.PersistentEntity
 import org.grails.datastore.mapping.model.types.Association
+import org.grails.datastore.mapping.model.types.ManyToMany
 
 /**
  * OrientDB simple edge association query via Gremlin Pipe executor
@@ -21,11 +22,13 @@ class OrientEdgeAssociationQueryExecutor implements AssociationQueryExecutor<OId
     private final OIdentifiable identifiable
     private final Association association
     private final OrientSession session
+    private final boolean isLazy
 
-    OrientEdgeAssociationQueryExecutor(Association association, OrientSession session, OIdentifiable identifiable = null) {
+    OrientEdgeAssociationQueryExecutor(Association association, OrientSession session, boolean isLazy, OIdentifiable identifiable = null) {
         this.association = association
         this.session = session
         this.identifiable = identifiable
+        this.isLazy = isLazy
     }
 
     /**
@@ -47,6 +50,10 @@ class OrientEdgeAssociationQueryExecutor implements AssociationQueryExecutor<OId
             def inAssociation = (Association) edgeAssociationEntity.getPropertyByName('in')
             def outAssociation = (Association) edgeAssociationEntity.getPropertyByName('out')
             def edgeName = edgeAssociationEntity.className
+            def result = []
+            if (association instanceof ManyToMany) {
+                return new OrientResultList(0, (Iterator) OrientExtensions.pipe(session.graph.getVertex(key)).both(edgeName).iterator(), (OrientEntityPersister) session.getPersister(association.associatedEntity))
+            }
             if (inAssociation.associatedEntity != association.owner) {
                 return new OrientResultList(0, (Iterator) OrientExtensions.pipe(session.graph.getVertex(key)).out(edgeName).iterator(), (OrientEntityPersister) session.getPersister(association.associatedEntity))
             }
