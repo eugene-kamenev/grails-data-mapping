@@ -133,15 +133,23 @@ class HibernateDatastoreSpringInitializer extends AbstractDatastoreInitializer {
             // for listening to Hibernate events
             hibernateEventListeners(HibernateEventListeners)
             // Useful interceptor for wrapping Hibernate behavior
-            persistenceInterceptor(AggregatePersistenceContextInterceptor) {
-                hibernateDatastore = ref('hibernateDatastore')
-            }
+            persistenceInterceptor(AggregatePersistenceContextInterceptor)
 
             // domain model mapping context, used for configuration
             grailsDomainClassMappingContext(HibernateMappingContextFactoryBean) {
                 delegate.configuration = this.configuration
                 proxyFactory = hibernateProxyHandler
                 delegate.persistentClasses = persistentClasses
+            }
+
+            // override Validator beans with Hibernate aware instances
+            for(cls in persistentClasses) {
+                "${cls.name}Validator"(HibernateDomainClassValidator) {
+                    messageSource = ref("messageSource")
+                    domainClass = ref("${cls.name}DomainClass")
+                    grailsApplication = ref('grailsApplication')
+                    mappingContext = ref("grailsDomainClassMappingContext")
+                }
             }
 
             def config = this.configuration
@@ -217,17 +225,6 @@ class HibernateDatastoreSpringInitializer extends AbstractDatastoreInitializer {
                     bean.scope = "prototype"
                     properties = hibernateProperties
                 }
-
-                // override Validator beans with Hibernate aware instances
-                for(cls in persistentClasses) {
-                    "${cls.name}Validator$suffix"(HibernateDomainClassValidator) {
-                        messageSource = ref("messageSource")
-                        domainClass = ref("${cls.name}DomainClass")
-                        grailsApplication = ref("grailsApplication")
-                        hibernateDatastore = ref("hibernateDatastore$suffix")
-                    }
-                }
-
 
                 def namingStrategy = config.getProperty("hibernate${suffix}.naming_strategy") ?: ImprovedNamingStrategy
                 try {

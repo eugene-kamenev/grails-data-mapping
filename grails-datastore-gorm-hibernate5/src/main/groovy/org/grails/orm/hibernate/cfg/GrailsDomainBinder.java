@@ -102,13 +102,15 @@ public class GrailsDomainBinder implements MetadataContributor {
     };
 
     protected final String sessionFactoryName;
+    protected final String dataSourceName;
     protected final HibernateMappingContext hibernateMappingContext;
     protected Closure defaultMapping;
     protected PersistentEntityNamingStrategy namingStrategy;
     protected MetadataBuildingContext metadataBuildingContext;
 
-    public GrailsDomainBinder(String sessionFactoryName, HibernateMappingContext hibernateMappingContext) {
+    public GrailsDomainBinder(String dataSourceName, String sessionFactoryName, HibernateMappingContext hibernateMappingContext) {
         this.sessionFactoryName = sessionFactoryName;
+        this.dataSourceName = dataSourceName;
         this.hibernateMappingContext = hibernateMappingContext;
         // pre-build mappings
         for (PersistentEntity persistentEntity : hibernateMappingContext.getPersistentEntities()) {
@@ -151,7 +153,7 @@ public class GrailsDomainBinder implements MetadataContributor {
 
         java.util.Collection<PersistentEntity> persistentEntities = hibernateMappingContext.getPersistentEntities();
         for (PersistentEntity persistentEntity : persistentEntities) {
-            if(persistentEntity.isRoot()) {
+            if(GrailsHibernateUtil.usesDatasource(persistentEntity, dataSourceName) && persistentEntity.isRoot()) {
                 bindRoot((HibernatePersistentEntity) persistentEntity, metadataCollector, sessionFactoryName);
             }
         }
@@ -210,7 +212,7 @@ public class GrailsDomainBinder implements MetadataContributor {
                 getIndexColumnName(property, sessionFactoryBeanName), mappings);
         PropertyConfig pc = getPropertyConfig(property);
         if (pc != null && pc.getIndexColumn() != null) {
-            bindColumnConfigToColumn(getColumnForSimpleValue(value), getSingleColumnConfig(pc.getIndexColumn()));
+            bindColumnConfigToColumn(property, getColumnForSimpleValue(value), getSingleColumnConfig(pc.getIndexColumn()));
         }
 
         if (!value.isTypeSpecified()) {
@@ -662,7 +664,7 @@ public class GrailsDomainBinder implements MetadataContributor {
 
                 bindSimpleValue(typeName, element,true, columnName, mappings);
                 if (hasJoinColumnMapping) {
-                    bindColumnConfigToColumn(getColumnForSimpleValue(element), config.getJoinTable().getColumn());
+                    bindColumnConfigToColumn(property, getColumnForSimpleValue(element), config.getJoinTable().getColumn());
                 }
             }
         } else {
@@ -719,7 +721,10 @@ public class GrailsDomainBinder implements MetadataContributor {
         return null;
     }
 
-    protected void bindColumnConfigToColumn(Column column, ColumnConfig columnConfig) {
+    protected void bindColumnConfigToColumn(PersistentProperty property, Column column, ColumnConfig columnConfig) {
+        final PropertyConfig mappedForm = property != null ? (PropertyConfig) property.getMapping().getMappedForm() : null;
+        boolean allowUnique = mappedForm != null && !mappedForm.isUniqueWithinGroup();
+
         if (columnConfig == null) {
             return;
         }
@@ -736,7 +741,9 @@ public class GrailsDomainBinder implements MetadataContributor {
         if (columnConfig.getSqlType() != null && !columnConfig.getSqlType().isEmpty()) {
             column.setSqlType(columnConfig.getSqlType());
         }
-        column.setUnique(columnConfig.getUnique());
+        if(allowUnique) {
+            column.setUnique(columnConfig.getUnique());
+        }
     }
 
     protected boolean hasJoinColumnMapping(PropertyConfig config) {
@@ -1619,7 +1626,7 @@ public class GrailsDomainBinder implements MetadataContributor {
                 if (cc.getName() != null) {
                     c.setName(cc.getName());
                 }
-                bindColumnConfigToColumn(c, cc);
+                bindColumnConfigToColumn(null, c, cc);
             }
         }
 
@@ -1920,12 +1927,12 @@ public class GrailsDomainBinder implements MetadataContributor {
             uk.addColumns(property.getColumnIterator());
         }
 
-        setUniqueName(uk);
+        setGeneratedUniqueName(uk);
 
         table.addUniqueKey(uk);
     }
 
-    protected void setUniqueName(UniqueKey uk) {
+    protected void setGeneratedUniqueName(UniqueKey uk) {
         StringBuilder sb = new StringBuilder(uk.getTable().getName()).append('_');
         for (Object col : uk.getColumns()) {
             sb.append(((Column) col).getName()).append('_');
@@ -2000,7 +2007,8 @@ public class GrailsDomainBinder implements MetadataContributor {
             } else {
                 simpleValue.setTypeName(ENUM_TYPE_CLASS);
                 if (enumType.equals(DEFAULT_ENUM_TYPE) || "string".equalsIgnoreCase(enumType)) {
-                    enumProperties.put(ENUM_TYPE_PROP, String.valueOf(Types.VARCHAR));
+                    enumProperties.put(EnumType.TYPE, String.valueOf(Types.VARCHAR));
+                    enumProperties.put(EnumType.NAMED, Boolean.TRUE.toString());
                 }
                 else if (!"ordinal".equalsIgnoreCase(enumType)) {
                     LOG.warn("Invalid enumType specified when mapping property [" + property.getName() +
@@ -2040,7 +2048,7 @@ public class GrailsDomainBinder implements MetadataContributor {
         PropertyConfig propertyConfig = getPropertyConfig(property);
         if (propertyConfig != null && !propertyConfig.getColumns().isEmpty()) {
             bindIndex(columnName, column, propertyConfig.getColumns().get(0), t);
-            bindColumnConfigToColumn(column, propertyConfig.getColumns().get(0));
+            bindColumnConfigToColumn(property, column, propertyConfig.getColumns().get(0));
         }
     }
 
@@ -2262,7 +2270,7 @@ public class GrailsDomainBinder implements MetadataContributor {
         if ((property instanceof org.grails.datastore.mapping.model.types.OneToOne) && !isComposite) {
             manyToOne.setAlternateUniqueKey(true);
             Column c = getColumnForSimpleValue(manyToOne);
-            if (config != null) {
+            if (config != null && !config.isUniqueWithinGroup()) {
                 c.setUnique(config.isUnique());
             }
             else if (property.isBidirectional() && isHasOne(property.getInverseSide())) {
@@ -2828,14 +2836,18 @@ public class GrailsDomainBinder implements MetadataContributor {
         createUniqueKeyForColumns(table, columnName, keyList);
     }
 
-    protected void createUniqueKeyForColumns(Table table, String columnName, List<Column> keyList) {
-        Collections.reverse(keyList);
-        UniqueKey key = table.getOrCreateUniqueKey("unique_" + table.getName() + '_' + columnName);
-        List<?> columns = key.getColumns();
-        if (columns.isEmpty()) {
-            LOG.debug("create unique key for " + table.getName() + " columns = " + keyList);
-            key.addColumns(keyList.iterator());
+    protected void createUniqueKeyForColumns(Table table, String columnName, List<Column> columns) {
+        Collections.reverse(columns);
+
+        UniqueKey uk = new UniqueKey();
+        uk.setTable(table);
+        uk.addColumns(columns.iterator());
+
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("create unique key for " + table.getName() + " columns = " + columns);
         }
+        setGeneratedUniqueName(uk);
+        table.addUniqueKey(uk);
     }
 
     protected void bindIndex(String columnName, Column column, ColumnConfig cc, Table table) {
