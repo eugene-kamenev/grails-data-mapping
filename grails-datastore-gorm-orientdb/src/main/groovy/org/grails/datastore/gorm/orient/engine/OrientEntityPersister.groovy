@@ -2,6 +2,7 @@ package org.grails.datastore.gorm.orient.engine
 
 import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.id.ORecordId
+import com.orientechnologies.orient.core.metadata.schema.OType
 import com.orientechnologies.orient.core.record.ORecord
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.tinkerpop.blueprints.impls.orient.OrientElement
@@ -194,7 +195,7 @@ class OrientEntityPersister extends EntityPersister {
             if ((!isUpdate) || ((dirtyCheckable!=null) && dirtyCheckable.hasChanged(pp.getName()))) {
 
                 Object propertyValue = entityAccess.getProperty(pp.getName());
-
+                boolean isProxyInitilized = session.mappingContext.proxyFactory.isInitialized(propertyValue)
                 if ((pp instanceof OneToMany) || (pp instanceof ManyToMany)) {
                     Association association = (Association) pp;
 
@@ -239,13 +240,15 @@ class OrientEntityPersister extends EntityPersister {
                             if (to instanceof OneToOne) {
                                 assocEntityAccess.setProperty(to.getReferencedPropertyName(), obj);
                             } else {
-                                Collection collection = (Collection) assocEntityAccess.getProperty(to.getReferencedPropertyName());
-                                if (collection == null ) {
-                                    collection = new ArrayList();
-                                    assocEntityAccess.setProperty(to.getReferencedPropertyName(), collection);
-                                }
-                                if (!collection.contains(obj)) {
-                                    collection.add(obj);
+                                if(isProxyInitilized) {
+                                    Collection collection = (Collection) assocEntityAccess.getProperty(to.getReferencedPropertyName());
+                                    if (collection == null ) {
+                                        collection = new ArrayList();
+                                        assocEntityAccess.setProperty(to.getReferencedPropertyName(), collection);
+                                    }
+                                    if (!collection.contains(obj)) {
+                                        collection.add(obj)
+                                    }
                                 }
                             }
                         }
@@ -255,7 +258,6 @@ class OrientEntityPersister extends EntityPersister {
                         boolean reversed = RelationshipUtils.useReversedMappingFor(to);
 
                         if (!reversed) {
-                            println "adding pending relationship inside persistAssociationsOfEntity !revesed block"
                             final EntityAccess assocationAccess = orientDbSession().createEntityAccess(to.getAssociatedEntity(), propertyValue);
                             orientDbSession().addPendingRelationshipInsert((Serializable) entityAccess.getIdentifier(), to, (Serializable) assocationAccess.getIdentifier());
                         }
@@ -373,9 +375,7 @@ class OrientEntityPersister extends EntityPersister {
             final Object instance = entityAccess.getEntity();
             entityAccess.setIdentifierNoConversion(nativeEntry.identity)
             for (property in entityAccess.persistentEntity.getPersistentProperties()) {
-                // No OPTIONAL MATCH specified so the association queries are lazily executed
                 if(property instanceof ToOne) {
-                    // first check whether the object has already been loaded from the cache
 
                     // if a lazy proxy should be created for this association then create it,
                     // note that this strategy does not allow for null checks
@@ -384,7 +384,7 @@ class OrientEntityPersister extends EntityPersister {
                         final Object proxy = getMappingContext().getProxyFactory().createProxy(
                                 this.session,
                                 (AssociationQueryExecutor) associationQueryExecutor,
-                                nativeEntry.identity
+                                (Serializable)OrientPersistentPropertyConverter.getValue(nativeEntry, property, OType.LINK)
                         );
                         entityAccess.setPropertyNoConversion(property.name,
                                 proxy

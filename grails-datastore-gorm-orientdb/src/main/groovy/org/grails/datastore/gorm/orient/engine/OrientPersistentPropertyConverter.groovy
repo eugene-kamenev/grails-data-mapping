@@ -396,7 +396,7 @@ abstract class OrientPersistentPropertyConverter {
         if (entry instanceof ODocument) {
             return entry.field(nativeName, type)
         } else if (entry instanceof OrientElement) {
-            return entry.getProperty(nativeName)
+            return ((ODocument)entry.record).field(nativeName, type)
         }
         return null
     }

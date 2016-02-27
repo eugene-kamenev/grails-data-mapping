@@ -32,6 +32,7 @@ class OrientAssociationQueryExecutor implements AssociationQueryExecutor<OIdenti
 
     @Override
     List<Object> query(OIdentifiable primaryKey) {
+            primaryKey = this.key
         Association inverseSide = association.getInverseSide();
         if (inverseSide != null && OrientGormHelper.getOTypeForField(association) != OType.LINK) {
             Query query = session.createQuery(association.getAssociatedEntity().getJavaClass());

@@ -29,7 +29,7 @@ class OrientPersistentSet extends PersistentSet {
         this.parentAccess = parentAccess
         this.association = association
         this.adapter = new OrientAdapter(session, association, parentAccess)
-       // setProxyEntities(association.isLazy())
+        setProxyEntities(association.isLazy())
     }
 
     @Override
