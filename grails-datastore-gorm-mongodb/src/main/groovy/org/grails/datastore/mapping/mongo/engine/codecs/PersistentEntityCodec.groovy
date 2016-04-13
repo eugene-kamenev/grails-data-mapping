@@ -668,6 +668,16 @@ class PersistentEntityCodec implements Codec {
                     )
                 }
             }
+            SIMPLE_TYPE_DECODERS[ObjectId] = new TypeDecoder() {
+                @Override
+                void decode(BsonReader reader, Simple property, EntityAccess entityAccess) {
+
+                    entityAccess.setPropertyNoConversion(
+                            property.name,
+                            reader.readObjectId()
+                    )
+                }
+            }
         }
 
         @Override
@@ -788,6 +798,12 @@ class PersistentEntityCodec implements Codec {
                     writer.writeBinaryData( new BsonBinary(((Binary)value).data))
                 }
             }
+            SIMPLE_TYPE_ENCODERS[ObjectId] = new TypeEncoder() {
+                @Override
+                void encode(BsonWriter writer, Simple property, Object value) {
+                    writer.writeObjectId((ObjectId)value)
+                }
+            }
         }
 
         @Override
@@ -836,7 +852,7 @@ class PersistentEntityCodec implements Codec {
                         decoded
                 ))
                 if (value != null) {
-                    entityAccess.setPropertyNoConversion(property.name, value)
+                    entityAccess.setProperty(property.name, value)
                 }
             }
             else {

@@ -1,6 +1,7 @@
 package grails.plugin.hibernate
 
 import grails.config.Config
+import grails.config.Settings
 import grails.core.GrailsApplication
 import grails.core.GrailsClass
 import grails.core.GrailsDomainClass
@@ -21,9 +22,11 @@ import org.grails.orm.hibernate.support.AbstractMultipleDataSourceAggregatePersi
 import org.grails.orm.hibernate.validation.HibernateDomainClassValidator
 import org.grails.orm.hibernate.validation.PersistentConstraintFactory
 import org.grails.orm.hibernate.validation.UniqueConstraint
+import org.grails.validation.ConstraintEvalUtils
 import org.springframework.beans.factory.support.BeanDefinitionRegistry
 import org.springframework.beans.factory.support.RootBeanDefinition
 import org.springframework.context.ApplicationContext
+import org.springframework.core.env.PropertyResolver
 import org.springframework.validation.Validator
 /**
  * Plugin that integrates Hibernate into a Grails application
@@ -71,7 +74,7 @@ class HibernateGrailsPlugin extends Plugin {
         }
         .collect() { GrailsClass cls -> cls.clazz }
 
-        def springInitializer = new HibernateDatastoreSpringInitializer(config, domainClasses)
+        def springInitializer = new HibernateDatastoreSpringInitializer((PropertyResolver)config, domainClasses)
         springInitializer.registerApplicationIfNotPresent = false
         springInitializer.dataSources = dataSourceNames
         springInitializer.enableReload = Environment.isDevelopmentMode()
@@ -157,7 +160,7 @@ class HibernateGrailsPlugin extends Plugin {
                 messageSource = ref("messageSource")
                 domainClass = ref("${cls.fullName}DomainClass")
                 delegate.grailsApplication = ref("grailsApplication")
-                hibernateDatastore = ref("hibernateDatastore$suffix")
+                mappingContext = ref("grailsDomainClassMappingContext")
             }
         }
     }

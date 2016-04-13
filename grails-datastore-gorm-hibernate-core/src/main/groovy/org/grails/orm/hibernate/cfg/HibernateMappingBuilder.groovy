@@ -38,7 +38,8 @@ class HibernateMappingBuilder implements MappingConfigurationBuilder<Mapping, Pr
     static final Logger LOG = LoggerFactory.getLogger(this)
 
     Mapping mapping
-    String className
+    final String className
+    final Closure defaultConstraints
 
     /**
      * Constructor for builder
@@ -49,9 +50,10 @@ class HibernateMappingBuilder implements MappingConfigurationBuilder<Mapping, Pr
         this.className = className
     }
 
-    HibernateMappingBuilder(Mapping mapping, String className) {
+    HibernateMappingBuilder(Mapping mapping, String className, Closure defaultConstraints = null) {
         this.mapping = mapping
         this.className = className
+        this.defaultConstraints = defaultConstraints
     }
 
     @Override
@@ -433,8 +435,17 @@ class HibernateMappingBuilder implements MappingConfigurationBuilder<Mapping, Pr
      */
     private handleMethodMissing = { String name, args ->
         if (args && ((args[0] instanceof Map) || (args[0] instanceof Closure))) {
-            def namedArgs = args[0] instanceof Map ? args[0] : [:]
-            PropertyConfig property = mapping.columns[name] ?: new PropertyConfig()
+            Map namedArgs = args[0] instanceof Map ? args[0] : [:]
+
+            def newConfig = new PropertyConfig()
+            if(defaultConstraints != null && namedArgs.containsKey('shared')) {
+                def sharedConstraints = mapping.columns.get(namedArgs.shared)
+                if(sharedConstraints != null) {
+                    newConfig = (PropertyConfig)sharedConstraints.clone()
+                }
+            }
+
+            PropertyConfig property = mapping.columns[name] ?: newConfig
             property.formula = namedArgs.formula ?: property.formula
             property.type = namedArgs.type ?: property.type
             property.setLazy( namedArgs.lazy instanceof Boolean ? namedArgs.lazy : property.getLazy() )

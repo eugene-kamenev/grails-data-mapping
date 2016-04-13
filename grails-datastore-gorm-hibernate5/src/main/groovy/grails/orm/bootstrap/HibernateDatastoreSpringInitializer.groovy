@@ -65,7 +65,6 @@ class HibernateDatastoreSpringInitializer extends AbstractDatastoreInitializer {
     Set<String> dataSources = [defaultDataSourceBeanName]
     boolean enableReload = false
 
-
     @Override
     protected Class<AbstractDatastorePersistenceContextInterceptor> getPersistenceInterceptorClass() {
         DatastorePersistenceContextInterceptor
@@ -149,6 +148,7 @@ class HibernateDatastoreSpringInitializer extends AbstractDatastoreInitializer {
                     domainClass = ref("${cls.name}DomainClass")
                     grailsApplication = ref('grailsApplication')
                     mappingContext = ref("grailsDomainClassMappingContext")
+
                 }
             }
 

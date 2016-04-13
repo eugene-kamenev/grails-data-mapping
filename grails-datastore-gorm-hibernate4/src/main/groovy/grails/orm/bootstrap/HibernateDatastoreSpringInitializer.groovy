@@ -64,7 +64,6 @@ class HibernateDatastoreSpringInitializer extends AbstractDatastoreInitializer {
     boolean enableReload = false
 
 
-
     @Override
     protected Class<AbstractDatastorePersistenceContextInterceptor> getPersistenceInterceptorClass() {
         DatastorePersistenceContextInterceptor
