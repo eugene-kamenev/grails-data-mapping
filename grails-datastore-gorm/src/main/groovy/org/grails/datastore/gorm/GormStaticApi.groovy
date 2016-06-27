@@ -39,6 +39,7 @@ import org.grails.datastore.mapping.query.api.BuildableCriteria
 import org.grails.datastore.mapping.query.api.Criteria
 import org.springframework.beans.PropertyAccessorFactory
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.DefaultTransactionDefinition
@@ -54,9 +55,9 @@ import org.springframework.validation.Errors
 @CompileStatic
 class GormStaticApi<D> extends AbstractGormApi<D> {
 
-    protected List<FinderMethod> gormDynamicFinders
+    protected final List<FinderMethod> gormDynamicFinders
 
-    protected PlatformTransactionManager transactionManager
+    protected final PlatformTransactionManager transactionManager
 
     GormStaticApi(Class<D> persistentClass, Datastore datastore, List<FinderMethod> finders) {
         this(persistentClass, datastore, finders, null)
@@ -120,10 +121,20 @@ class GormStaticApi<D> extends AbstractGormApi<D> {
             final argumentsForMethod
             if(varArgs == null) {
                 argumentsForMethod = [null] as Object[]
-            } else if(varArgs.length == 1 && varArgs[0].getClass().isArray()) {
-                argumentsForMethod = varArgs[0]
-            } else {
-                argumentsForMethod = varArgs
+            }
+            // if the argument component type is not an Object then we have an array passed that is the actual argument
+            else if(varArgs.getClass().componentType != Object) {
+                // so we wrap it in an object array
+                argumentsForMethod = [varArgs] as Object[]
+            }
+            else {
+
+                if(varArgs.length == 1 && varArgs[0].getClass().isArray()) {
+                    argumentsForMethod = varArgs[0]
+                } else {
+
+                    argumentsForMethod = varArgs
+                }
             }
             method.invoke(delegate, methodName, argumentsForMethod)
         }
@@ -240,9 +251,15 @@ class GormStaticApi<D> extends AbstractGormApi<D> {
     @CompileStatic(TypeCheckingMode.SKIP)
     D create() {
         D d = persistentClass.newInstance()
-        datastore.applicationContext.autowireCapableBeanFactory.autowireBeanProperties(
-              d, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
-        d
+
+        def applicationContext = datastore.applicationContext
+
+        if(applicationContext != null) {
+            applicationContext.autowireCapableBeanFactory.autowireBeanProperties(
+                    d, AutowireCapableBeanFactory.AUTOWIRE_BY_NAME, false)
+        }
+
+        return d
     }
 
     /**

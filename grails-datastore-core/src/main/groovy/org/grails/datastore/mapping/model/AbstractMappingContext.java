@@ -14,24 +14,31 @@
  */
 package org.grails.datastore.mapping.model;
 
+import java.beans.Introspector;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.grails.datastore.mapping.config.ConfigurationUtils;
 import org.grails.datastore.mapping.engine.BeanEntityAccess;
 import org.grails.datastore.mapping.engine.EntityAccess;
+import org.grails.datastore.mapping.engine.types.CustomTypeMarshaller;
 import org.grails.datastore.mapping.model.lifecycle.Initializable;
 import org.grails.datastore.mapping.model.types.conversion.DefaultConversionService;
 import org.grails.datastore.mapping.proxy.JavassistProxyFactory;
 import org.grails.datastore.mapping.proxy.ProxyFactory;
 import org.grails.datastore.mapping.proxy.ProxyHandler;
+import org.grails.datastore.mapping.reflect.ClassPropertyFetcher;
 import org.grails.datastore.mapping.reflect.EntityReflector;
 import org.grails.datastore.mapping.reflect.FieldEntityAccess;
+import org.grails.datastore.mapping.reflect.ReflectionUtils;
+import org.grails.datastore.mapping.validation.ValidatorRegistry;
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.ConverterRegistry;
 import org.springframework.core.convert.support.GenericConversionService;
+import org.springframework.core.env.PropertyResolver;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.validation.Validator;
@@ -47,6 +54,7 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
 
     public static final String GROOVY_PROXY_FACTORY_NAME = "org.grails.datastore.gorm.proxy.GroovyProxyFactory";
     public static final String JAVASIST_PROXY_FACTORY = "javassist.util.proxy.ProxyFactory";
+    public static final String CONFIGURATION_PREFIX = "grails.gorm.";
     protected Collection<PersistentEntity> persistentEntities = new ConcurrentLinkedQueue<PersistentEntity>();
     protected Map<String,PersistentEntity>  persistentEntitiesByName = new ConcurrentHashMap<String,PersistentEntity>();
     protected Map<PersistentEntity,Map<String,PersistentEntity>>  persistentEntitiesByDiscriminator = new ConcurrentHashMap<PersistentEntity,Map<String,PersistentEntity>>();
@@ -55,6 +63,7 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
     protected Collection<Listener> eventListeners = new ConcurrentLinkedQueue<Listener>();
     protected GenericConversionService conversionService = new DefaultConversionService();
     protected ProxyFactory proxyFactory;
+    protected ValidatorRegistry validatorRegistry;
     private boolean canInitializeEntities = true;
     private boolean initialized;
 
@@ -72,10 +81,33 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
 
     public abstract MappingFactory getMappingFactory();
 
+    @Override
+    public void configure(PropertyResolver configuration) {
+        if(configuration == null) {
+            return;
+        }
+
+        String simpleName = Introspector.decapitalize(getClass().getSimpleName());
+        String suffix = "MappingContext";
+
+        if(simpleName.endsWith(suffix)) {
+            simpleName = simpleName.substring(0, simpleName.length() - suffix.length());
+        }
+
+        String prefix = CONFIGURATION_PREFIX + simpleName;
+        String configurationKey = prefix + ".custom.types";
+
+        Iterable<CustomTypeMarshaller> customTypeMarshallers = ConfigurationUtils.findServices(configuration, configurationKey, CustomTypeMarshaller.class);
+        for (CustomTypeMarshaller customTypeMarshaller : customTypeMarshallers) {
+            if(customTypeMarshaller.supports(this)) {
+                getMappingFactory().registerCustomType(customTypeMarshaller);
+            }
+        }
+    }
 
     @Override
     public ProxyHandler getProxyHandler() {
-        return this.proxyFactory;
+        return getProxyFactory();
     }
 
     public ProxyFactory getProxyFactory() {
@@ -108,6 +140,9 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
             this.proxyFactory = factory;
         }
     }
+    public void setValidatorRegistry(ValidatorRegistry validatorRegistry) {
+        this.validatorRegistry = validatorRegistry;
+    }
 
     private static class DefaultProxyFactoryCreator {
         public static ProxyFactory create() {
@@ -127,7 +162,16 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
      */
     public Validator getEntityValidator(PersistentEntity entity) {
         if (entity != null) {
-            return entityValidators.get(entity);
+
+            Validator validator = entityValidators.get(entity);
+            if(validator == null && validatorRegistry != null) {
+                Validator v = validatorRegistry.getValidator(entity);
+                if(v != null) {
+                    entityValidators.put(entity, v);
+                    return v;
+                }
+            }
+            return validator;
         }
         return null;
     }
@@ -198,6 +242,7 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
                 eventListener.persistentEntityAdded(entity);
             }
         }
+        ClassPropertyFetcher.clearCache();
         return entities;
     }
 
@@ -235,6 +280,7 @@ public abstract class AbstractMappingContext implements MappingContext, Initiali
         for (Listener eventListener : eventListeners) {
             eventListener.persistentEntityAdded(entity);
         }
+        ClassPropertyFetcher.clearCache();
         return entity;
     }
 

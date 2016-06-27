@@ -31,12 +31,12 @@ import javax.persistence.FetchType
 @CompileStatic
 class PropertyConfig extends Property {
 
+    PropertyConfig() {
+        setFetchStrategy(null)
+    }
+
     boolean explicitSaveUpdateCascade;
 
-    /**
-     * Whether the property is derived
-     */
-    boolean derived = false
     /**
      * The Hibernate type or user type of the property. This can be
      * a string or a class.
@@ -54,7 +54,6 @@ class PropertyConfig extends Property {
      */
     String sort
 
-    String formula
 
     /**
      * The default sort order
@@ -66,15 +65,6 @@ class PropertyConfig extends Property {
      */
     Integer batchSize
 
-    /**
-     * Cascading strategy for this property. Only makes sense if the
-     * property is an association or collection.
-     */
-    String cascade
-    /**
-     * The fetch strategy for this property.
-     */
-    FetchMode fetch = FetchMode.DEFAULT
 
     /**
      * Whether to ignore ObjectNotFoundException
@@ -96,15 +86,34 @@ class PropertyConfig extends Property {
     CacheConfig cache
     JoinTable joinTable = new JoinTable()
 
+    /**
+     * @param fetch The Hibernate {@link FetchMode}
+     */
     void setFetch(FetchMode fetch) {
         if(FetchMode.JOIN.equals(fetch)) {
             super.setFetchStrategy(FetchType.EAGER)
         }
-        this.fetch = fetch
+        else {
+            super.setFetchStrategy(FetchType.LAZY)
+        }
     }
 
-    FetchMode getFetch() {
-        return fetch
+    /**
+     * @return The Hibernate {@link FetchMode}
+     */
+    FetchMode getFetchMode() {
+        FetchType strategy = super.getFetchStrategy()
+        if(strategy == null) {
+            return FetchMode.DEFAULT
+        }
+        switch (strategy) {
+            case FetchType.EAGER:
+                return FetchMode.JOIN
+            case FetchType.LAZY:
+                return FetchMode.SELECT
+            default:
+                return FetchMode.DEFAULT
+        }
     }
     /**
      * The column used to produce the index for index based collections (lists and maps)
@@ -220,5 +229,22 @@ class PropertyConfig extends Property {
         if (columns?.size() > 1) {
             throw new RuntimeException("Cannot treat multi-column property as a single-column property")
         }
+    }
+
+    @Override
+    PropertyConfig clone() throws CloneNotSupportedException {
+        PropertyConfig pc = (PropertyConfig)super.clone()
+
+        pc.fetch = fetchMode
+        pc.indexColumn = indexColumn != null ? (PropertyConfig)indexColumn.clone() : null
+        pc.cache = cache != null ? cache.clone() : cache
+        pc.joinTable = joinTable.clone()
+
+        def newColumns = new ArrayList<>(columns.size())
+        pc.columns = newColumns
+        for(c in columns) {
+            newColumns.add(c.clone())
+        }
+        return pc
     }
 }

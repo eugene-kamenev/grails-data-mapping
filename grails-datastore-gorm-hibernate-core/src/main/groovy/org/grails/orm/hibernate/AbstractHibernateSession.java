@@ -30,6 +30,7 @@ import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Session implementation that wraps a Hibernate {@link Session}.
@@ -46,6 +47,11 @@ public abstract class AbstractHibernateSession extends AbstractAttributeStoringS
 
     protected AbstractHibernateSession(AbstractHibernateDatastore hibernateDatastore, SessionFactory sessionFactory) {
         datastore = hibernateDatastore;
+    }
+
+    @Override
+    public boolean isSchemaless() {
+        return false;
     }
 
     public Serializable insert(Object o) {
@@ -169,7 +175,8 @@ public abstract class AbstractHibernateSession extends AbstractAttributeStoringS
 
     @Override
     public boolean hasTransaction() {
-        return false;
+        Object resource = TransactionSynchronizationManager.getResource(hibernateTemplate.getSessionFactory());
+        return resource != null;
     }
 
     public Datastore getDatastore() {

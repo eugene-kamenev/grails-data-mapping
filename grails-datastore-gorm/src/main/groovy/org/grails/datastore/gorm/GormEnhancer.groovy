@@ -75,33 +75,44 @@ class GormEnhancer implements Closeable {
     /**
      * Whether to enhance classes dynamically using meta programming as well, only necessary for Java classes
      */
-    boolean dynamicEnhance = false
+    final boolean dynamicEnhance
 
     GormEnhancer(Datastore datastore) {
         this(datastore, null)
     }
 
-    GormEnhancer(Datastore datastore, PlatformTransactionManager transactionManager) {
+    GormEnhancer(Datastore datastore, PlatformTransactionManager transactionManager, boolean dynamicEnhance = false) {
         this.datastore = datastore
         this.transactionManager = transactionManager
+        this.dynamicEnhance = dynamicEnhance
         if(datastore != null) {
             registerConstraints(datastore)
         }
         NAMED_QUERIES.clear()
         for(entity in datastore.mappingContext.persistentEntities) {
-            if(appliesToDatastore(datastore, entity)) {
-                def cls = entity.javaClass
-                Set<String> qualifiers = allQualifiers(datastore, entity)
-                for(qualifier in qualifiers) {
-                    def staticApi = getStaticApi(cls)
-                    def name = entity.name
-                    STATIC_APIS.get(qualifier).put(name, staticApi)
-                    def instanceApi = getInstanceApi(cls)
-                    INSTANCE_APIS.get(qualifier).put(name, instanceApi)
-                    def validationApi = getValidationApi(cls)
-                    VALIDATION_APIS.get(qualifier).put(name, validationApi)
-                    DATASTORES.get(qualifier).put(name, datastore)
-                }
+            registerEntity(entity)
+        }
+    }
+
+    /**
+     * Registers a new entity with the GORM enhancer
+     *
+     * @param entity The entity
+     */
+    void registerEntity(PersistentEntity entity) {
+        Datastore datastore = this.datastore
+        if (appliesToDatastore(datastore, entity)) {
+            def cls = entity.javaClass
+            Set<String> qualifiers = allQualifiers(this.datastore, entity)
+            for (qualifier in qualifiers) {
+                def staticApi = getStaticApi(cls)
+                def name = entity.name
+                STATIC_APIS.get(qualifier).put(name, staticApi)
+                def instanceApi = getInstanceApi(cls)
+                INSTANCE_APIS.get(qualifier).put(name, instanceApi)
+                def validationApi = getValidationApi(cls)
+                VALIDATION_APIS.get(qualifier).put(name, validationApi)
+                DATASTORES.get(qualifier).put(name, this.datastore)
             }
         }
     }
@@ -147,6 +158,7 @@ class GormEnhancer implements Closeable {
     }
 
 
+    @CompileDynamic
     static <D> GormStaticApi<D> findStaticApi(Class<D> entity, String qualifier = Entity.DEFAULT_DATA_SOURCE) {
         def staticApi = STATIC_APIS.get(qualifier)?.get(NameUtils.getClassName(entity))
         if(staticApi == null) {
@@ -291,8 +303,8 @@ class GormEnhancer implements Closeable {
 
 
 
-    @CompileStatic
-    protected <D> List<AbstractGormApi<D>> getInstanceMethodApiProviders(Class cls) {
+    @CompileDynamic
+    protected <D> List<AbstractGormApi<D>> getInstanceMethodApiProviders(Class<D> cls) {
         [getInstanceApi(cls), getValidationApi(cls)]
     }
 
@@ -379,6 +391,6 @@ class GormEnhancer implements Closeable {
          new FindAllByBooleanFinder(datastore),
          new FindByBooleanFinder(datastore),
          new CountByFinder(datastore),
-         new ListOrderByFinder(datastore)]
+         new ListOrderByFinder(datastore)] as List<FinderMethod>
     }
 }

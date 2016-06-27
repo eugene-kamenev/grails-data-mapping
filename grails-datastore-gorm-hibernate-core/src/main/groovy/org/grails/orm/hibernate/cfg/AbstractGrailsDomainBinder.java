@@ -95,7 +95,8 @@ public abstract class AbstractGrailsDomainBinder {
 
 
     /**
-     * The default mapping defined by {@link GrailsDomainConfiguration#DEFAULT_MAPPING}
+     * The default ORM mapping
+     *
      * @param defaultMapping The default mapping
      */
     public void setDefaultMapping(Closure defaultMapping) {
@@ -824,7 +825,7 @@ public abstract class AbstractGrailsDomainBinder {
             manyToOne.setLazy(true);
         } else {
             manyToOne.setIgnoreNotFound(config.getIgnoreNotFound());
-            final FetchMode fetch = config.getFetch();
+            final FetchMode fetch = config.getFetchMode();
             if(!fetch.equals(FetchMode.JOIN) && !fetch.equals(FetchMode.EAGER)) {
                 manyToOne.setLazy(true);
             }
@@ -844,7 +845,7 @@ public abstract class AbstractGrailsDomainBinder {
             collection.setLazy(true);
             collection.setExtraLazy(false);
         } else {
-            final FetchMode fetch = config.getFetch();
+            final FetchMode fetch = config.getFetchMode();
             if(!fetch.equals(FetchMode.JOIN) && !fetch.equals(FetchMode.EAGER)) {
                 collection.setLazy(true);
             }
@@ -1051,12 +1052,12 @@ public abstract class AbstractGrailsDomainBinder {
 
         PropertyConfig pc = getPropertyConfig(property);
         // configure eager fetching
-        final FetchMode fetchMode = pc.getFetch();
+        final FetchMode fetchMode = pc.getFetchMode();
         if (fetchMode == FetchMode.JOIN) {
             collection.setFetchMode(FetchMode.JOIN);
         }
-        else if (pc.getFetch() != null) {
-            collection.setFetchMode(pc.getFetch());
+        else if (pc.getFetchMode() != null) {
+            collection.setFetchMode(pc.getFetchMode());
         }
         else {
             collection.setFetchMode(FetchMode.DEFAULT);
@@ -1838,6 +1839,7 @@ public abstract class AbstractGrailsDomainBinder {
             table.setComment(gormMapping.getComment());
         }
 
+        List<Embedded> embedded = new ArrayList<>();
         for (PersistentProperty currentGrailsProp : persistentProperties) {
 
             // if its inherited skip
@@ -1920,9 +1922,8 @@ public abstract class AbstractGrailsDomainBinder {
                     }
                 }
                 else if (currentGrailsProp instanceof Embedded) {
-                    value = new Component(mappings, persistentClass);
-
-                    bindComponent((Component) value, (Embedded) currentGrailsProp, true, mappings, sessionFactoryBeanName);
+                    embedded.add((Embedded)currentGrailsProp);
+                    continue;
                 }
             }
             // work out what type of relationship it is and bind value
@@ -1938,6 +1939,14 @@ public abstract class AbstractGrailsDomainBinder {
                 Property property = createProperty(value, persistentClass, currentGrailsProp, mappings);
                 persistentClass.addProperty(property);
             }
+        }
+
+        for (Embedded association : embedded) {
+            Value value = new Component(mappings, persistentClass);
+
+            bindComponent((Component) value, association, true, mappings, sessionFactoryBeanName);
+            Property property = createProperty(value, persistentClass, association, mappings);
+            persistentClass.addProperty(property);
         }
 
         bindNaturalIdentifier(table, gormMapping, persistentClass);
@@ -2364,8 +2373,8 @@ public abstract class AbstractGrailsDomainBinder {
                                    ForeignKeyDirection.FOREIGN_KEY_TO_PARENT);
         oneToOne.setAlternateUniqueKey(true);
 
-        if (config != null && config.getFetch() != null) {
-            oneToOne.setFetchMode(config.getFetch());
+        if (config != null && config.getFetchMode() != null) {
+            oneToOne.setFetchMode(config.getFetchMode());
         }
         else {
             oneToOne.setFetchMode(FetchMode.DEFAULT);
@@ -2394,8 +2403,8 @@ public abstract class AbstractGrailsDomainBinder {
     protected void bindManyToOneValues(org.grails.datastore.mapping.model.types.Association property, ManyToOne manyToOne) {
         PropertyConfig config = getPropertyConfig(property);
 
-        if (config != null && config.getFetch() != null) {
-            manyToOne.setFetchMode(config.getFetch());
+        if (config != null && config.getFetchMode() != null) {
+            manyToOne.setFetchMode(config.getFetchMode());
         }
         else {
             manyToOne.setFetchMode(FetchMode.DEFAULT);
@@ -3161,98 +3170,100 @@ public abstract class AbstractGrailsDomainBinder {
     protected abstract void handleLazyProxy(PersistentEntity domainClass, PersistentProperty grailsProperty);
 
     protected abstract boolean identityEnumTypeSupports(Class<?> propertyType);
-}
 
-/**
- * A Collection type, for the moment only Set is supported
- *
- * @author Graeme
- */
-abstract class CollectionType {
+    /**
+     * A Collection type, for the moment only Set is supported
+     *
+     * @author Graeme
+     */
+    static abstract class CollectionType {
 
-    protected Class<?> clazz;
-    protected AbstractGrailsDomainBinder binder;
+        protected Class<?> clazz;
+        protected AbstractGrailsDomainBinder binder;
 
-    protected static CollectionType SET;
-    protected static CollectionType LIST;
-    protected static CollectionType BAG;
-    protected static CollectionType MAP;
-    protected static boolean initialized;
+        protected static CollectionType SET;
+        protected static CollectionType LIST;
+        protected static CollectionType BAG;
+        protected static CollectionType MAP;
+        protected static boolean initialized;
 
-    protected static final Map<Class<?>, CollectionType> INSTANCES = new HashMap<Class<?>, CollectionType>();
+        protected static final Map<Class<?>, CollectionType> INSTANCES = new HashMap<Class<?>, CollectionType>();
 
-    public abstract Collection create(ToMany property, PersistentClass owner,
-                                      String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException;
+        public abstract Collection create(ToMany property, PersistentClass owner,
+                                          String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException;
 
-    protected CollectionType(Class<?> clazz, AbstractGrailsDomainBinder binder) {
-        this.clazz = clazz;
-        this.binder = binder;
-    }
-
-    @Override
-    public String toString() {
-        return clazz.getName();
-    }
-
-    protected void createInstances() {
-
-        if (initialized) {
-            return;
+        protected CollectionType(Class<?> clazz, AbstractGrailsDomainBinder binder) {
+            this.clazz = clazz;
+            this.binder = binder;
         }
 
-        initialized = true;
+        @Override
+        public String toString() {
+            return clazz.getName();
+        }
 
-        SET = new CollectionType(Set.class, binder) {
-            @Override
-            public Collection create(ToMany property, PersistentClass owner,
-                                     String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
-                org.hibernate.mapping.Set coll = new org.hibernate.mapping.Set(mappings, owner);
-                coll.setCollectionTable(owner.getTable());
-                binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
-                return coll;
-            }
-        };
-        INSTANCES.put(Set.class, SET);
-        INSTANCES.put(SortedSet.class, SET);
+        protected void createInstances() {
 
-        LIST = new CollectionType(List.class, binder) {
-            @Override
-            public Collection create(ToMany property, PersistentClass owner,
-                                     String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
-                org.hibernate.mapping.List coll = new org.hibernate.mapping.List(mappings, owner);
-                coll.setCollectionTable(owner.getTable());
-                binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
-                return coll;
+            if (initialized) {
+                return;
             }
-        };
-        INSTANCES.put(List.class, LIST);
 
-        BAG = new CollectionType(java.util.Collection.class, binder) {
-            @Override
-            public Collection create(ToMany property, PersistentClass owner,
-                                     String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
-                Bag coll = new Bag(mappings, owner);
-                coll.setCollectionTable(owner.getTable());
-                binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
-                return coll;
-            }
-        };
-        INSTANCES.put(java.util.Collection.class, BAG);
+            initialized = true;
 
-        MAP = new CollectionType(Map.class, binder) {
-            @Override
-            public Collection create(ToMany property, PersistentClass owner,
-                                     String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
-                org.hibernate.mapping.Map map = new org.hibernate.mapping.Map(mappings, owner);
-                binder.bindCollection(property, map, owner, mappings, path, sessionFactoryBeanName);
-                return map;
-            }
-        };
-        INSTANCES.put(Map.class, MAP);
+            SET = new CollectionType(Set.class, binder) {
+                @Override
+                public Collection create(ToMany property, PersistentClass owner,
+                                         String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
+                    org.hibernate.mapping.Set coll = new org.hibernate.mapping.Set(mappings, owner);
+                    coll.setCollectionTable(owner.getTable());
+                    binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
+                    return coll;
+                }
+            };
+            INSTANCES.put(Set.class, SET);
+            INSTANCES.put(SortedSet.class, SET);
+
+            LIST = new CollectionType(List.class, binder) {
+                @Override
+                public Collection create(ToMany property, PersistentClass owner,
+                                         String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
+                    org.hibernate.mapping.List coll = new org.hibernate.mapping.List(mappings, owner);
+                    coll.setCollectionTable(owner.getTable());
+                    binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
+                    return coll;
+                }
+            };
+            INSTANCES.put(List.class, LIST);
+
+            BAG = new CollectionType(java.util.Collection.class, binder) {
+                @Override
+                public Collection create(ToMany property, PersistentClass owner,
+                                         String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
+                    Bag coll = new Bag(mappings, owner);
+                    coll.setCollectionTable(owner.getTable());
+                    binder.bindCollection(property, coll, owner, mappings, path, sessionFactoryBeanName);
+                    return coll;
+                }
+            };
+            INSTANCES.put(java.util.Collection.class, BAG);
+
+            MAP = new CollectionType(Map.class, binder) {
+                @Override
+                public Collection create(ToMany property, PersistentClass owner,
+                                         String path, Mappings mappings, String sessionFactoryBeanName) throws MappingException {
+                    org.hibernate.mapping.Map map = new org.hibernate.mapping.Map(mappings, owner);
+                    binder.bindCollection(property, map, owner, mappings, path, sessionFactoryBeanName);
+                    return map;
+                }
+            };
+            INSTANCES.put(Map.class, MAP);
+        }
+
+        public CollectionType collectionTypeForClass(Class<?> clazz) {
+            createInstances();
+            return INSTANCES.get(clazz);
+        }
     }
 
-    public CollectionType collectionTypeForClass(Class<?> clazz) {
-        createInstances();
-        return INSTANCES.get(clazz);
-    }
 }
+

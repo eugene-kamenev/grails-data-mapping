@@ -25,7 +25,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.validation.Validator
 
 class Hibernate4GrailsPlugin {
-    def version = "5.0.0.BUILD-SNAPSHOT" // added by Gradle
+    def version = "6.0.0.BUILD-SNAPSHOT" // added by Gradle
     def license = "Apache 2.0 License"
     def organization = [name: "Grails", url: "http://grails.org/"]
     def developers = [
@@ -57,11 +57,10 @@ class Hibernate4GrailsPlugin {
         def domainClasses = application.getArtefacts(DomainClassArtefactHandler.TYPE)
                             .findAll() { GrailsDomainClass cls -> cls.mappingStrategy != "none" && cls.mappingStrategy == GrailsDomainClass.GORM}
                             .collect() { GrailsClass cls -> cls.clazz }
-        dataSourceNames = AbstractMultipleDataSourceAggregatePersistenceContextInterceptor.calculateDataSourceNames(application)
         def initializer = new HibernateDatastoreSpringInitializer(application.config, domainClasses)
         initializer.registerApplicationIfNotPresent = false
         initializer.enableReload = grails.util.Environment.isDevelopmentMode()
-        initializer.dataSources = dataSourceNames
+        dataSourceNames.addAll( initializer.dataSources )
         def definitions = initializer.getBeanDefinitions((BeanDefinitionRegistry) springConfig.getUnrefreshedApplicationContext())
         definitions.delegate = delegate
         definitions.call()

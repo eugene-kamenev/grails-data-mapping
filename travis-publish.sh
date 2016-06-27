@@ -20,80 +20,185 @@ if [[ $TRAVIS_REPO_SLUG == "grails/grails-data-mapping" && $TRAVIS_PULL_REQUEST 
 
   echo "Publishing archives"
   echo "org.gradle.jvmargs=-XX\:MaxPermSize\=1024m -Xmx1500m -Dfile.encoding\=UTF-8 -Duser.country\=US -Duser.language\=en -Duser.variant" >> ~/.gradle/gradle.properties
-  echo "org.gradle.daemon=true" >> ~/.gradle/gradle.properties
+  echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
   ./gradlew --stop
 
+  export GRADLE_OPTS="-XX:MaxPermSize=1024m -Xmx1500m -Dfile.encoding=UTF-8"
 
   gpg --keyserver keyserver.ubuntu.com --recv-key $SIGNING_KEY
   if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
     # for releases we upload to Bintray and Sonatype OSS
-    ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" publish uploadArchives bintrayUpload -x grails2-plugins/neo4j:publish -x grails2-plugins/hibernate4:publish -x grails2-plugins/mongodb:publish -x grails2-plugins/neo4j:uploadArchives -x grails2-plugins/hibernate4:uploadArchives -x grails2-plugins/mongodb:uploadArchives || EXIT_STATUS=$?
-    if [[ $EXIT_STATUS -eq 0 ]]; then
-    ./gradlew grails2-plugins/neo4j:publish grails2-plugins/hibernate4:publish grails2-plugins/mongodb:publish || EXIT_STATUS=$?
     ./gradlew --stop
+    ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" uploadArchives -DskipPlugins=true || EXIT_STATUS=$?
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+        ./gradlew --stop
+        ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" uploadArchives -x grails2-plugins/hibernate4:publish -x grails2-plugins/hibernate4:uploadArchives -DonlyPlugins=true || EXIT_STATUS=$?
+    fi
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+        ./gradlew --stop
+        ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" publish -DskipPlugins=true || EXIT_STATUS=$?
+    fi
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+        ./gradlew --stop
+        ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" publish   -x grails2-plugins/hibernate4:publish -DonlyPlugins=true || EXIT_STATUS=$?
+    fi
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+        ./gradlew --stop
+        ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" bintrayUpload -DonlyPlugins=true || EXIT_STATUS=$?
+    fi
+    
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+        ./gradlew grails2-plugins/hibernate4:publish || EXIT_STATUS=$?
+        ./gradlew --stop
     fi
 
   else
     # for snapshots only to repo.grails.org
-    ./gradlew publish -x grails2-plugins/neo4j:publish -x grails2-plugins/hibernate4:publish -x grails2-plugins/mongodb:publish || EXIT_STATUS=$?
     ./gradlew --stop
+    ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" publish -DskipPlugins=true || EXIT_STATUS=$?
+
     if [[ $EXIT_STATUS -eq 0 ]]; then
-    ./gradlew grails2-plugins/neo4j:publish grails2-plugins/hibernate4:publish grails2-plugins/mongodb:publish || EXIT_STATUS=$?
+        ./gradlew --stop
+        ./gradlew -Psigning.keyId="$SIGNING_KEY" -Psigning.password="$SIGNING_PASSPHRASE" -Psigning.secretKeyRingFile="${TRAVIS_BUILD_DIR}/secring.gpg" publish  -x grails2-plugins/hibernate4:publish -DonlyPlugins=true || EXIT_STATUS=$?
+    fi
+
+    if [[ $EXIT_STATUS -eq 0 ]]; then
+    ./gradlew grails2-plugins/hibernate4:publish || EXIT_STATUS=$?
     ./gradlew --stop
     fi
   fi
 
   if [[ $EXIT_STATUS -eq 0 ]]; then
-      ./gradlew closeAndPromoteRepository
       echo "Trigger Travis Functional Test build"
       ./trigger-dependent-build.sh
-#      ./gradlew travisciTrigger -i
-      ./gradlew --stop
 
-      echo "Building documentation"
-      ./gradlew allDocs || EXIT_STATUS=$?
 
-      git config --global user.name "$GIT_NAME"
-      git config --global user.email "$GIT_EMAIL"
-      git config --global credential.helper "store --file=~/.git-credentials"
-      echo "https://$GH_TOKEN:@github.com" > ~/.git-credentials
+        git config --global user.name "$GIT_NAME"
+        git config --global user.email "$GIT_EMAIL"
+        git config --global credential.helper "store --file=~/.git-credentials"
+        echo "https://$GH_TOKEN:@github.com" > ~/.git-credentials
 
-      git clone https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git -b gh-pages gh-pages --single-branch > /dev/null
-      cd gh-pages
-
-      # If this is the master branch then update the snapshot
-#      if [[ $TRAVIS_BRANCH == 'master' ]]; then
-#        mkdir -p snapshot
-#        cp -r ../build/docs/. ./snapshot/
-#
-#        git add snapshot/*
-#      fi
-
-      # If there is a tag present then this becomes the latest
-      if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
-        version="$TRAVIS_TAG"
-        version=${version:1}
-
-        mkdir -p latest
-        cp -r ../build/docs/. ./latest/
-        git add latest/*
-
-        majorVersion=${version:0:4}
-        majorVersion="${majorVersion}x"
-
-        mkdir -p "$version"
-        cp -r ../build/docs/. "./$version/"
-        git add "$version/*"
-
-        mkdir -p "$majorVersion"
-        cp -r ../build/docs/. "./$majorVersion/"
-        git add "$majorVersion/*"
-
-        git commit -a -m "Updating docs for Travis build: https://travis-ci.org/$TRAVIS_REPO_SLUG/builds/$TRAVIS_BUILD_ID"
-        git push origin HEAD
+        echo "Triggering Hibernate 5 build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-hibernate5.git gorm-hibernate5
+        cd gorm-hibernate5
+        echo "$(date)" > .snapshot
+        git add .snapshot
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release GORM for Hibernate 5 $TRAVIS_TAG"
+            git tag $TRAVIS_TAG
+            git push --tags
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
         cd ..
-        rm -rf gh-pages
-      fi
+
+        echo "Triggering REST Client build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-rest-client.git gorm-rest-client
+        cd gorm-rest-client
+        echo "$(date)" > .snapshot
+        git add .snapshot
+
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "New GORM Release $TRAVIS_TAG"
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
+        cd ..
+
+        echo "Triggering Neo4j build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-neo4j.git gorm-neo4j
+        cd gorm-neo4j
+        echo "$(date)" > .snapshot
+        git add .snapshot
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release GORM for Neo4j $TRAVIS_TAG"
+            git tag $TRAVIS_TAG
+            git push --tags
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
+        cd ..
+
+        echo "Triggering MongoDB build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-mongodb.git gorm-mongodb
+        cd gorm-mongodb
+        echo "$(date)" > .snapshot
+        git add .snapshot
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release GORM for MongoDB $TRAVIS_TAG"
+            git tag $TRAVIS_TAG
+            git push --tags
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
+        cd ..
+
+        echo "Triggering Redis build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-redis.git gorm-redis
+        cd gorm-redis
+        echo "$(date)" > .snapshot
+        git add .snapshot
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release GORM for Redis $TRAVIS_TAG"
+            git tag $TRAVIS_TAG
+            git push --tags
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
+        cd ..
+
+        echo "Triggering Cassandra build"
+        git clone https://${GH_TOKEN}@github.com/grails/gorm-cassandra.git gorm-cassandra
+        cd gorm-cassandra
+        echo "$(date)" > .snapshot
+        git add .snapshot
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release GORM for Cassandra $TRAVIS_TAG"
+            git tag $TRAVIS_TAG
+            git push --tags
+        else
+            git commit -m "New Core Snapshot: $(date)"
+        fi
+        git push
+        cd ..
+
+        # If there is a tag present then this becomes the latest
+        if [[ $TRAVIS_TAG =~ ^v[[:digit:]] ]]; then
+            echo "Triggering documentation build"
+            git clone https://${GH_TOKEN}@github.com/grails/gorm-docs.git gorm-docs
+            cd gorm-docs
+
+            echo "gormVersion=${TRAVIS_TAG:1}" > gradle.properties
+            git add gradle.properties
+            git commit -m "Release $TRAVIS_TAG docs"
+            git tag $TRAVIS_TAG
+            git push --tags
+            git push
+            cd ..
+        fi
+
   else
       echo "Error occured during publishing, skipping docs"
   fi

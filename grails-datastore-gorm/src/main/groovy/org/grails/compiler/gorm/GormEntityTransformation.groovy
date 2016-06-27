@@ -19,6 +19,7 @@ import grails.gorm.annotation.Entity
 import groovy.transform.CompilationUnitAware
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
+import groovy.transform.ToString
 import org.codehaus.groovy.ast.ASTNode
 import org.codehaus.groovy.ast.AnnotatedNode
 import org.codehaus.groovy.ast.AnnotationNode
@@ -121,7 +122,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
             return
         }
 
-        classNode.putNodeMetaData(AstUtils.TRANSFORM_APPLIED_MARKER, Boolean.TRUE)
+
         AstUtils.addTransformedEntityName(classNode.name)
         // Add the entity annotation and enable generic replacement
         classNode.setUsingGenerics(true);
@@ -142,20 +143,38 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
         def dirtyCheckTransformer = new DirtyCheckingTransformer()
         dirtyCheckTransformer.performInjectionOnAnnotatedClass(sourceUnit, classNode)
 
+        def rxEntityClassNode = AstUtils.findInterface(classNode, "grails.gorm.rx.RxEntity")
+        boolean isRxEntity = rxEntityClassNode != null
         // now enhance with id and version
         injectIdProperty(classNode)
-        injectVersionProperty(classNode)
+
+        if(!isRxEntity) {
+            injectVersionProperty(classNode)
+        }
 
         // inject toString()
         injectToStringMethod(classNode)
 
+
+        // inject the GORM entity trait unless it is an RX entity
+
+        MethodNode addToMethodNode = ADD_TO_METHOD_NODE
+        MethodNode removeFromMethodNode = REMOVE_FROM_METHOD_NODE
+        MethodNode getAssociationMethodNode = GET_ASSOCIATION_ID_METHOD_NODE
+
+        if(!isRxEntity) {
+
+            def classGormEntityTrait = pickGormEntityTrait(classNode, sourceUnit)
+            AstUtils.injectTrait(classNode, classGormEntityTrait)
+        }
+        else {
+            addToMethodNode = rxEntityClassNode.getMethods("addTo").get(0)
+            removeFromMethodNode = rxEntityClassNode.getMethods("removeFrom").get(0)
+            getAssociationMethodNode = rxEntityClassNode.getMethods("getAssociationId").get(0)
+        }
+
         // inject associations
-        injectAssociations(classNode)
-
-        // inject the GORM entity trait
-        def classGormEntityTrait = pickGormEntityTrait(classNode, sourceUnit)
-        AstUtils.injectTrait(classNode, classGormEntityTrait)
-
+        injectAssociations(classNode, addToMethodNode, removeFromMethodNode, getAssociationMethodNode)
         // convert the methodMissing and propertyMissing implementations to $static_methodMissing and $static_propertyMissing for the static versions
         def methodMissingBody = new BlockStatement()
         def methodNameParam = new Parameter(ClassHelper.make(String), "name")
@@ -249,9 +268,11 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
         }
 
 
-        if(compilationUnit != null) {
+        if(compilationUnit != null && !isRxEntity) {
             org.codehaus.groovy.transform.trait.TraitComposer.doExtendTraits(classNode, sourceUnit, compilationUnit);
+            classNode.putNodeMetaData(AstUtils.TRANSFORM_APPLIED_MARKER, Boolean.TRUE)
         }
+
 
     }
 
@@ -300,22 +321,21 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
     @Memoized
     private List<GormEntityTraitProvider> findTraitProviders(Class<GormEntityTraitProvider> traitProviderInterface, ClassLoader classLoader) {
         def traitProviders = ServiceLoader.load(traitProviderInterface, classLoader)
-        def allTraitProviders = traitProviders.toList()
+        List<GormEntityTraitProvider> allTraitProviders = []
+        for(provider in traitProviders) {
+            if(provider.isAvailable()) {
+                allTraitProviders.add(provider)
+            }
+        }
         if(allTraitProviders.isEmpty()) {
             traitProviders = ServiceLoader.load(traitProviderInterface, Thread.currentThread().contextClassLoader)
-            allTraitProviders = traitProviders.toList()
+            for(provider in traitProviders) {
+                if(provider.isAvailable()) {
+                    allTraitProviders.add(provider)
+                }
+            }
         }
         return allTraitProviders
-    }
-
-    @Memoized
-    private Class findGormEntityTraitForValue(String mapWithValue, ClassLoader classLoader) {
-        try {
-            return Class.forName("grails.gorm.${mapWithValue}.${NameUtils.capitalize(mapWithValue)}Entity", true, classLoader)
-        } catch (Throwable e) {
-            // ignore
-        }
-        return null
     }
 
     @Memoized
@@ -347,7 +367,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
         }
     }
 
-    private void injectAssociations(ClassNode classNode) {
+    private void injectAssociations(ClassNode classNode, MethodNode addToMethodNode, MethodNode removeFromMethodNode, MethodNode getAssociationMethodNode) {
 
         List<PropertyNode> propertiesToAdd = []
         for (PropertyNode propertyNode in classNode.getProperties()) {
@@ -383,10 +403,10 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
                 continue
             }
             if(AstUtils.isDomainClass(type)) {
-                addToOneIdProperty(pn.getName(), classNode, listExpression)
+                addToOneIdProperty(pn.getName(), classNode, listExpression,getAssociationMethodNode)
             }
             else if(AstUtils.isSubclassOfOrImplementsInterface(type, Iterable.name)) {
-                addRelationshipManagementMethods(pn.name, classNode)
+                addRelationshipManagementMethods(pn.name, classNode, addToMethodNode, removeFromMethodNode)
             }
         }
     }
@@ -437,7 +457,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
         return properties
     }
 
-    private void addToOneIdProperty(String propertyName, ClassNode classNode, ListExpression listExpression) {
+    private void addToOneIdProperty(String propertyName, ClassNode classNode, ListExpression listExpression, MethodNode getAssociationMethodNode) {
         String idProperty = "get${NameUtils.capitalize(propertyName)}Id"
         String idPropertyName = "${propertyName}Id"
         if (!AstUtils.hasOrInheritsProperty(classNode, idPropertyName)) {
@@ -448,7 +468,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
 
             def methodCall = new MethodCallExpression(new VariableExpression("this"), "getAssociationId", args)
             methodCall.setMethodTarget(
-                    GET_ASSOCIATION_ID_METHOD_NODE
+                    getAssociationMethodNode
             )
             methodBody.addStatement(
                     new ExpressionStatement(methodCall)
@@ -482,7 +502,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
         return properties;
     }
 
-    private void addRelationshipManagementMethods(String propertyName, ClassNode classNode) {
+    private void addRelationshipManagementMethods(String propertyName, ClassNode classNode, MethodNode addToMethodNode, MethodNode removeFromMethodNode) {
         def addToMethod = "addTo${NameUtils.capitalize(propertyName)}"
         def existing = classNode.getMethod(addToMethod, ADD_TO_PARAMETERS)
         if (existing == null) {
@@ -494,7 +514,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
 
             def methodCall = new MethodCallExpression(new VariableExpression("this"), "addTo", args)
             methodCall.setMethodTarget(
-                    ADD_TO_METHOD_NODE
+                    addToMethodNode
             )
             methodBody.addStatement(
                     new ExpressionStatement(methodCall)
@@ -515,7 +535,7 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
 
             def methodCall = new MethodCallExpression(new VariableExpression("this"), "removeFrom", args)
             methodCall.setMethodTarget(
-                    REMOVE_FROM_METHOD_NODE
+                    removeFromMethodNode
             )
             methodBody.addStatement(
                     new ExpressionStatement(methodCall)
@@ -546,8 +566,10 @@ class GormEntityTransformation implements CompilationUnitAware,ASTTransformation
 
     private void injectToStringMethod(ClassNode classNode) {
         final boolean hasToString = AstUtils.implementsOrInheritsZeroArgMethod(classNode, "toString")
+        final boolean hasToStringAnnotation = AstUtils.findAnnotation(classNode, ToString.class) != null;
+        final boolean isEnum = AstUtils.isEnum(classNode)
 
-        if (!hasToString) {
+        if (!hasToString && !hasToStringAnnotation && !isEnum) {
             GStringExpression ge = new GStringExpression(classNode.getName() + ' : ${id != null ? id : \'(unsaved)\'}');
             ge.addString(new ConstantExpression(classNode.getName() + " : "));
             VariableExpression idVariable = new VariableExpression("id");

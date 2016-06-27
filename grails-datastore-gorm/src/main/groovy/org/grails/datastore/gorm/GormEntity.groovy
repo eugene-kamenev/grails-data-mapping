@@ -43,8 +43,19 @@ import org.springframework.transaction.TransactionDefinition
  * @since 4.0
  */
 @CompileStatic
-trait GormEntity<D> implements GormValidateable, DirtyCheckable {
-    
+trait GormEntity<D> implements GormValidateable, DirtyCheckable, GormEntityApi<D> {
+
+
+    /**
+     * Allow access to datasource by name
+     *
+     * @param instance The instance
+     * @param name The property name
+     * @return The property value
+     */
+    def propertyMissing(String name) {
+        GormEnhancer.findInstanceApi(getClass()).propertyMissing(this, name)
+    }
 
     /**
      * Proxy aware instanceOf implementation.
@@ -233,16 +244,20 @@ trait GormEntity<D> implements GormValidateable, DirtyCheckable {
      */
     Serializable getAssociationId(String associationName) {
         PersistentEntity entity = getGormPersistentEntity()
+        MappingContext mappingContext = entity.mappingContext
+        EntityReflector entityReflector = mappingContext.getEntityReflector(entity)
         def association = entity.getPropertyByName(associationName)
         if(association instanceof ToOne) {
-            def datastore = currentGormStaticApi().datastore
-            def proxyHandler = datastore.mappingContext.getProxyHandler()
-            def value = ClassPropertyFetcher.forClass(getClass()).getPropertyValue(this, associationName)
+            def proxyHandler = mappingContext.getProxyHandler()
+            def value = entityReflector.getProperty(this, associationName)
             if(proxyHandler.isProxy(value)) {
                 return proxyHandler.getIdentifier(value)
             }
             else {
-                return datastore.currentSession.getObjectIdentifier(value)
+                PersistentEntity associatedEntity = ((ToOne)association).getAssociatedEntity()
+                if(associatedEntity != null) {
+                    return associatedEntity.getReflector().getIdentifier(value)
+                }
             }
         }
         return null
@@ -258,7 +273,7 @@ trait GormEntity<D> implements GormValidateable, DirtyCheckable {
     D removeFrom(String associationName, Object arg) {
         final PersistentEntity entity = getGormPersistentEntity()
         def prop = entity.getPropertyByName(associationName)
-        final MappingContext mappingContext = lookupMappingContext()
+        final MappingContext mappingContext = entity.mappingContext
         final EntityReflector entityReflector = mappingContext.getEntityReflector(entity)
 
         if(prop instanceof Association) {
@@ -309,7 +324,7 @@ trait GormEntity<D> implements GormValidateable, DirtyCheckable {
         final def prop = entity.getPropertyByName(associationName)
         final D targetObject = (D)this
 
-        final MappingContext mappingContext = lookupMappingContext()
+        final MappingContext mappingContext = entity.mappingContext
         final EntityReflector reflector = mappingContext.getEntityReflector(entity)
         if(reflector != null && (prop instanceof Association)) {
 
