@@ -37,7 +37,7 @@ project.ext {
     // driver versions
     neo4jVersion = '2.3.2'
     mongoVersion = '3.2.1'
-    orientDbVersion = '2.1.10'
+    orientDbVersion = '2.2.3'
 
     // plugin versions
     hibernateVersion = "4.3.10"

@@ -4,6 +4,7 @@ dependencies {
     compile("com.orientechnologies:orientdb-graphdb:${orientDbVersion}") {
         exclude group: 'org.codehaus.groovy', module: 'groovy'
     }
+    compile group: 'com.tinkerpop.gremlin', name: 'gremlin-java', version: '2.6.0'
     compile 'com.github.raymanrt:orientqb:0.1.7'
     compile project(":grails-datastore-gorm"),
             project(":grails-datastore-core")

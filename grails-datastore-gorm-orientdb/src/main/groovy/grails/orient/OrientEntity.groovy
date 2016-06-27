@@ -25,4 +25,12 @@ trait OrientEntity<D> extends GormEntity<D> {
     def propertyMissing(String name, def arg) {
 
     }
+
+    def out(String name) {
+
+    }
+
+    def 'in'(String name) {
+
+    }
 }

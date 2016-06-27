@@ -12,4 +12,9 @@ import org.grails.compiler.gorm.GormEntityTraitProvider;
 @CompileStatic
 class OrientEntityTraitProvider implements GormEntityTraitProvider {
     final Class entityTrait = OrientEntity
+
+    @Override
+    boolean isAvailable() {
+        return true //TODO: check this
+    }
 }

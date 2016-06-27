@@ -37,11 +37,11 @@ class Setup {
         db = poolFactory.acquire()
         def classes = [Person, Pet, PetType, Parent, Child, TestEntity, Face, Nose, Highway, Book, ChildEntity, Country, City, Location, Publication, PlantCategory, Plant]
         // uncomment for mixed mapping suite
-        /*classes = [org.grails.datastore.gorm.orient.entity.custom.Person,
+        classes = [org.grails.datastore.gorm.orient.entity.custom.Person,
                    org.grails.datastore.gorm.orient.entity.custom.City,
                    org.grails.datastore.gorm.orient.entity.custom.Country,
                    org.grails.datastore.gorm.orient.entity.custom.LivesIn,
-                   org.grails.datastore.gorm.orient.entity.custom.HasFriend]*/
+                   org.grails.datastore.gorm.orient.entity.custom.HasFriend]
         def ctx = new GenericApplicationContext()
         ctx.refresh()
         def mappingContext = new OrientMappingContext({})

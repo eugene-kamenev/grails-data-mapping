@@ -9,6 +9,7 @@ import org.grails.datastore.mapping.model.ClassMapping
 import org.grails.datastore.mapping.model.IdentityMapping
 import org.grails.datastore.mapping.model.MappingContext
 import org.grails.datastore.mapping.model.PersistentEntity
+import org.grails.datastore.mapping.model.ValueGenerator
 import org.grails.datastore.mapping.model.types.Identity
 
 import java.beans.PropertyDescriptor
@@ -31,6 +32,11 @@ class OrientGormMappingFactory extends AbstractGormMappingFactory {
     @Override
     IdentityMapping createIdentityMapping(ClassMapping classMapping) {
         return new IdentityMapping() {
+
+            @Override
+            ValueGenerator getGenerator() {
+                return ValueGenerator.NATIVE //TODO: check this
+            }
 
             public String[] getIdentifierName() {
                 return [IDENTITY_PROPERTY] as String[]
