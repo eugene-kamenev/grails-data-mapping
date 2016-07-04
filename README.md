@@ -3,6 +3,8 @@
 GORM (Grails Object Mapping)
 ===
 
+[![Join the chat at https://gitter.im/eugene-kamenev/grails-data-mapping](https://badges.gitter.im/eugene-kamenev/grails-data-mapping.svg)](https://gitter.im/eugene-kamenev/grails-data-mapping?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [Grails][Grails] is a framework used to build web applications with the [Groovy][Groovy] programming language. This project provides the plumbings for the GORM API both for Hibernate and for new implementations of GORM ontop of NoSQL datastores.
 [Grails]: http://grails.org/
 [Groovy]: http://groovy-lang.org/
